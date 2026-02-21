@@ -8,6 +8,10 @@
     ],
     "routes": [
         {
+            "src": "/(?:style\\.css|dashboard\\.js|netigo-logo\\.png)",
+            "dest": "/public/$0"
+        },
+        {
             "src": "/(.*)",
             "dest": "server.js"
         }
