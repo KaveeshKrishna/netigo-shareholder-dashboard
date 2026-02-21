@@ -8,69 +8,79 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style type="text/tailwindcss">
-    @layer utilities {
-      .min-w-0 { min-width: 0; }
-    }
-  </style>
   <link rel="stylesheet" href="/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body class="dashboard-body max-md:!flex-col max-md:!pb-[70px]">
+<body class="dashboard-body">
 
-  <nav class="sidebar max-md:!w-full max-md:!h-auto max-md:!relative max-md:!p-[15px_20px] max-md:!border-r-0 max-md:!border-b max-md:!border-b-[var(--border-light)] max-md:!flex max-md:!flex-row max-md:!justify-between max-md:!items-center max-md:!bg-transparent max-md:!z-10">
-    <div class="sidebar-logo max-md:!m-0 max-md:!p-0">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
       <img src="/netigo-logo.png" alt="Netigo Logo" style="width: 40px; height: 40px; object-fit: contain;">
-      <h2 class="max-md:hidden">Netigo</h2>
+      <h2>Netigo</h2>
+      <button class="hamburger-btn close-sidebar"
+        onclick="document.getElementById('sidebar').classList.remove('active')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
-    <div class="sidebar-menu max-md:!fixed max-md:!bottom-0 max-md:!left-0 max-md:!w-full max-md:!h-[70px] max-md:!bg-[var(--bg-card)] max-md:!backdrop-blur-[20px] max-md:!border-t max-md:!border-[var(--border-light)] max-md:!flex max-md:!flex-row max-md:!p-0 max-md:!m-0 max-md:!z-[1000]">
-      <a href="/" class="menu-item active max-md:!flex max-md:!flex-col max-md:!justify-center max-md:!rounded-none max-md:!p-[5px] max-md:!text-[10px] max-md:!gap-[4px] max-md:!m-0 max-md:!border-none max-md:!bg-transparent max-md:!shadow-[inset_0_3px_0_var(--primary)] max-md:text-[var(--primary)]">
+    <div class="sidebar-menu">
+      <a href="/" class="menu-item active">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
           <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
-        <span class="max-md:block">Dashboard</span>
+        Dashboard
       </a>
 
       <% if (user.role==='superadmin' ) { %>
-        <a href="/admin" class="menu-item max-md:!flex max-md:!flex-col max-md:!justify-center max-md:!rounded-none max-md:!p-[5px] max-md:!text-[10px] max-md:!gap-[4px] max-md:!m-0 max-md:!border-none">
+        <a href="/admin" class="menu-item">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           </svg>
-          <span class="max-md:block">Admin</span>
+          Admin Panel
         </a>
         <% } %>
 
-          <div class="online-section max-md:!absolute max-md:!top-[10px] max-md:!right-[20px] max-md:!w-auto max-md:!m-0 max-md:!p-[5px_10px] max-md:!border-none max-md:!bg-transparent">
-            <p class="section-title max-md:!hidden">Live Tracking</p>
-            <div id="online-users-list" class="max-md:!flex max-md:!gap-[10px]">
+          <div class="online-section">
+            <p class="section-title">Live Tracking</p>
+            <div id="online-users-list">
               <!-- Injected via JS -->
             </div>
           </div>
 
-          <a href="/logout" class="menu-item logout-btn max-md:!flex max-md:!flex-col max-md:!justify-center max-md:!rounded-none max-md:!p-[5px] max-md:!text-[10px] max-md:!gap-[4px] max-md:!m-0 max-md:!mt-0 max-md:!border-none">
+          <a href="/logout" class="menu-item logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            <span class="max-md:block">Logout</span>
+            Logout
           </a>
     </div>
   </nav>
 
-  <main class="main-content min-w-0 max-md:!ml-0 max-md:!p-[20px_15px]">
-    <header class="topbar max-md:!flex-col max-md:!items-start max-md:!gap-[15px]">
-      <div class="greeting">
-        <h1 class="max-md:!text-2xl">Overview</h1>
-        <p class="max-md:!text-sm">Welcome back, <span class="highlight">
-            <%= user.username %>
-          </span></p>
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-header">
+        <button class="hamburger-btn" onclick="document.getElementById('sidebar').classList.add('active')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="greeting">
+          <h1>Overview</h1>
+          <p>Welcome back, <span class="highlight">
+              <%= user.username %>
+            </span></p>
+        </div>
       </div>
-      <div class="topbar-actions max-md:!w-full max-md:!flex-col sm:max-md:!flex-row max-md:!gap-[10px]">
-        <a href="/api/export" class="btn-primary max-md:!w-full max-md:!flex-1 max-md:!justify-center max-md:!text-[14px]" style="background: var(--color-investment); text-decoration: none;">
+      <div class="topbar-actions">
+        <a href="/api/export" class="btn-primary export-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -78,7 +88,7 @@
           </svg>
           Export CSV
         </a>
-        <button class="btn-primary max-md:!w-full max-md:!flex-1 max-md:!justify-center max-md:!text-[14px]" id="openModalBtn">
+        <button class="btn-primary" id="openModalBtn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -88,59 +98,58 @@
       </div>
     </header>
 
-    <section class="stats-grid max-md:!grid-cols-2 max-sm:!grid-cols-1 max-md:!gap-[15px]">
-      <div class="stat-card balance-card max-md:!flex-col max-md:!items-start max-md:!p-[15px] max-md:!gap-[10px]">
-        <div class="stat-icon max-md:!w-[40px] max-md:!h-[40px] max-md:!text-[20px]">₹</div>
+    <section class="stats-grid">
+      <div class="stat-card balance-card">
+        <div class="stat-icon">₹</div>
         <div class="stat-info">
-          <p class="max-md:!text-[12px]">Total Balance</p>
-          <h3 id="balance" class="max-md:!text-[20px]">₹0.00</h3>
+          <p>Total Balance</p>
+          <h3 id="balance">₹0.00</h3>
         </div>
       </div>
-      <div class="stat-card investment-card max-md:!flex-col max-md:!items-start max-md:!p-[15px] max-md:!gap-[10px]">
-        <div class="stat-icon max-md:!w-[40px] max-md:!h-[40px] max-md:!text-[20px]">↑</div>
+      <div class="stat-card investment-card">
+        <div class="stat-icon">↑</div>
         <div class="stat-info">
-          <p class="max-md:!text-[12px]">Total Investments</p>
-          <h3 id="investment" class="max-md:!text-[20px]">₹0.00</h3>
+          <p>Total Investments</p>
+          <h3 id="investment">₹0.00</h3>
         </div>
       </div>
-      <div class="stat-card income-card max-md:!flex-col max-md:!items-start max-md:!p-[15px] max-md:!gap-[10px]">
-        <div class="stat-icon max-md:!w-[40px] max-md:!h-[40px] max-md:!text-[20px]">+</div>
+      <div class="stat-card income-card">
+        <div class="stat-icon">+</div>
         <div class="stat-info">
-          <p class="max-md:!text-[12px]">Total Earnings</p>
-          <h3 id="income" class="max-md:!text-[20px]">₹0.00</h3>
+          <p>Total Earnings</p>
+          <h3 id="income">₹0.00</h3>
         </div>
       </div>
-      <div class="stat-card expense-card max-md:!flex-col max-md:!items-start max-md:!p-[15px] max-md:!gap-[10px]">
-        <div class="stat-icon max-md:!w-[40px] max-md:!h-[40px] max-md:!text-[20px]">-</div>
+      <div class="stat-card expense-card">
+        <div class="stat-icon">-</div>
         <div class="stat-info">
-          <p class="max-md:!text-[12px]">Total Expenses</p>
-          <h3 id="expense" class="max-md:!text-[20px]">₹0.00</h3>
+          <p>Total Expenses</p>
+          <h3 id="expense">₹0.00</h3>
         </div>
       </div>
     </section>
 
-    <!-- Adding min-w-0 to grid children fixes the ChartJS canvas expanding infinitely bug -->
-    <section class="content-grid max-md:!grid-cols-1 w-full">
-      <div class="card chart-card min-w-0">
-        <h3 class="max-md:!text-[18px]">Financial Analytics</h3>
-        <div class="chart-container relative w-full h-[300px] max-md:!h-[250px]">
+    <section class="content-grid">
+      <div class="card chart-card">
+        <h3>Financial Analytics</h3>
+        <div class="chart-container">
           <canvas id="chart"></canvas>
         </div>
       </div>
 
-      <div class="card recent-card min-w-0">
+      <div class="card recent-card">
         <div class="card-header">
-          <h3 class="max-md:!text-[18px]">Recent Transactions</h3>
+          <h3>Recent Transactions</h3>
         </div>
-        <div class="table-container max-md:overflow-x-auto w-full">
-          <table class="data-table w-full">
+        <div class="table-container">
+          <table class="data-table">
             <thead>
               <tr>
-                <th class="max-md:!p-[12px_10px] max-md:!text-[13px] max-md:whitespace-nowrap">Type</th>
-                <th class="max-md:!p-[12px_10px] max-md:!text-[13px] max-md:whitespace-nowrap">Category</th>
-                <th class="max-md:!p-[12px_10px] max-md:!text-[13px] max-md:whitespace-nowrap">Amount</th>
-                <th class="max-md:!p-[12px_10px] max-md:!text-[13px] max-md:whitespace-nowrap">Date</th>
-                <th class="max-md:!p-[12px_10px] max-md:!text-[13px] max-md:whitespace-nowrap">Actions</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="table">
