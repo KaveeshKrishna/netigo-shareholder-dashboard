@@ -200,14 +200,20 @@ app.post("/api/ping", auth, async (req, res) => {
   }
 });
 
-// Fetch online users (seen in the last 5 minutes)
+// Fetch all users with online status
 app.get("/api/online", auth, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT username, role, last_seen 
+      SELECT 
+        username, 
+        role, 
+        last_seen,
+        CASE 
+          WHEN last_seen >= NOW() - INTERVAL '5 minutes' THEN true 
+          ELSE false 
+        END as is_online
       FROM users 
-      WHERE last_seen >= NOW() - INTERVAL '5 minutes'
-      ORDER BY last_seen DESC
+      ORDER BY is_online DESC, username ASC
     `);
     res.json(result.rows);
   } catch (error) {

@@ -159,16 +159,33 @@ async function loadOnlineUsers() {
   const res = await fetch("/api/online");
   const users = await res.json();
   const container = document.getElementById("online-users-list");
-  container.innerHTML = "";
 
-  users.forEach(u => {
-    container.innerHTML += `
+  const online = users.filter(u => u.is_online);
+  const offline = users.filter(u => !u.is_online);
+
+  let html = `<p class="section-title" style="margin-bottom: 10px; color: var(--color-income);">Online accounts:</p>`;
+  online.forEach(u => {
+    html += `
       <div class="online-user">
         <span class="status-dot"></span>
         <span class="user-name">${u.username.split('@')[0]}</span>
       </div>
     `;
   });
+
+  if (offline.length > 0) {
+    html += `<p class="section-title" style="margin-top: 15px; margin-bottom: 10px; color: var(--color-expense);">Offline accounts:</p>`;
+    offline.forEach(u => {
+      html += `
+        <div class="online-user">
+          <span class="status-dot offline"></span>
+          <span class="user-name" style="color: var(--text-muted);">${u.username.split('@')[0]}</span>
+        </div>
+      `;
+    });
+  }
+
+  container.innerHTML = html;
 }
 
 // Initialization & Polling

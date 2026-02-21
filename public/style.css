@@ -201,7 +201,7 @@ body {
   margin-top: 20px;
   margin-bottom: 20px;
   padding: 15px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
   border: 1px solid var(--border-light);
 }
@@ -229,6 +229,11 @@ body {
   background-color: var(--color-income);
   border-radius: 50%;
   box-shadow: 0 0 8px var(--color-income);
+}
+
+.status-dot.offline {
+  background-color: var(--color-expense);
+  box-shadow: 0 0 8px var(--color-expense);
 }
 
 .user-name {
