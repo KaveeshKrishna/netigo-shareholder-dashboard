@@ -194,6 +194,46 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+}
+
+.online-section {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+}
+
+.section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.online-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-income);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--color-income);
+}
+
+.user-name {
+  color: var(--text-main);
+  text-transform: capitalize;
 }
 
 .menu-item {

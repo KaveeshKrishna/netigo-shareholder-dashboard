@@ -23,11 +23,17 @@ app.set("views", path.join(__dirname, "views"));
 // Database Initialization (Auto-Create Schema)
 async function initDb() {
   try {
+    // Note: We are dropping tables for testing / schema evolution since the user approved it
+    await pool.query("DROP TABLE IF EXISTS users CASCADE");
+    await pool.query("DROP TABLE IF EXISTS categories CASCADE");
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(255) UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        role VARCHAR(50) DEFAULT 'admin',
+        last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -42,12 +48,32 @@ async function initDb() {
       )
     `);
 
-    // Auto-create admin user if none exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+      )
+    `);
+
+    // Auto-create founders
     const usersCount = await pool.query("SELECT COUNT(*) FROM users");
     if (parseInt(usersCount.rows[0].count) === 0) {
-      const hash = await bcrypt.hash("admin123", 10);
-      await pool.query("INSERT INTO users (username, password) VALUES ($1, $2)", ["admin", hash]);
-      console.log("🚀 Default admin created (admin / admin123)");
+      const founders = [
+        ["kaveesh@netigo", await bcrypt.hash("netigo#kaveesh@125", 10), "superadmin"],
+        ["ayush@netigo", await bcrypt.hash("ayush123", 10), "admin"],
+        ["utkarsh@netigo", await bcrypt.hash("utkarsh123", 10), "admin"]
+      ];
+
+      for (let f of founders) {
+        await pool.query("INSERT INTO users (username, password, role) VALUES ($1, $2, $3)", f);
+      }
+      console.log("🚀 Founders initialized!");
+
+      // Default categories
+      const defCats = ["Server Hosting", "Domain Renewal", "Client Payment", "Software License"];
+      for (let c of defCats) {
+        await pool.query("INSERT INTO categories (name) VALUES ($1) ON CONFLICT DO NOTHING", [c]);
+      }
     }
   } catch (error) {
     console.error("Database initialization failed:", error);
@@ -129,12 +155,69 @@ app.post("/api/add", auth, async (req, res) => {
   }
 });
 
-app.delete("/api/delete/:id", auth, async (req, res) => {
+app.post("/api/delete/:id", auth, async (req, res) => {
+  const { password } = req.body;
   try {
+    // 1. Verify user password securely
+    const userRes = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
+    const user = userRes.rows[0];
+    if (!user) return res.status(403).json({ error: "User not found" });
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ error: "Incorrect password" });
+
+    // 2. Perform deletion
     await pool.query("DELETE FROM transactions WHERE id = $1", [req.params.id]);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete transaction" });
+  }
+});
+
+// ---------- NEW FEATURES API ----------
+// Ping to update last_seen
+app.post("/api/ping", auth, async (req, res) => {
+  try {
+    await pool.query("UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = $1", [req.user.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Ping failed" });
+  }
+});
+
+// Fetch online users (seen in the last 5 minutes)
+app.get("/api/online", auth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT username, role, last_seen 
+      FROM users 
+      WHERE last_seen >= NOW() - INTERVAL '5 minutes'
+      ORDER BY last_seen DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch online users" });
+  }
+});
+
+// Fetch categories
+app.get("/api/categories", auth, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch categories" });
+  }
+});
+
+// Add new category
+app.post("/api/categories", auth, async (req, res) => {
+  const { name } = req.body;
+  try {
+    await pool.query("INSERT INTO categories (name) VALUES ($1) ON CONFLICT DO NOTHING", [name]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add category" });
   }
 });
 

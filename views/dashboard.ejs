@@ -27,6 +27,14 @@
         </svg>
         Dashboard
       </a>
+
+      <div class="online-section">
+        <p class="section-title">Founders Online</p>
+        <div id="online-users-list">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
       <a href="/logout" class="menu-item logout-btn">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -118,7 +126,7 @@
     </section>
   </main>
 
-  <!-- Modal -->
+  <!-- Add Transaction Modal -->
   <div class="modal-overlay" id="transactionModal">
     <div class="modal card">
       <div class="modal-header">
@@ -136,7 +144,12 @@
         </div>
         <div class="input-group">
           <label>Category / Source</label>
-          <input name="category" placeholder="e.g. Server Cost, Client A..." required>
+          <div style="display: flex; gap: 10px;">
+            <select name="category" id="categorySelect" required style="flex:1;">
+              <!-- Injected via JS -->
+            </select>
+            <button type="button" class="btn-primary" id="newCategoryBtn" style="width: auto;">+</button>
+          </div>
         </div>
         <div class="input-group">
           <label>Amount (₹)</label>
@@ -147,6 +160,26 @@
           <input name="note" placeholder="Add details...">
         </div>
         <button type="submit" class="btn-primary w-100">Save Record</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Verification Modal -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal card">
+      <div class="modal-header">
+        <h3 style="color: var(--color-expense);">Secure Deletion</h3>
+        <button class="close-modal" onclick="closeDeleteModal()">✕</button>
+      </div>
+      <form id="deleteForm">
+        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">Please enter your password to
+          authorize this deletion.</p>
+        <input type="hidden" id="deleteId">
+        <div class="input-group">
+          <label>Password</label>
+          <input name="password" type="password" required>
+        </div>
+        <button type="submit" class="btn-primary w-100" style="background: var(--color-expense);">Delete Record</button>
       </form>
     </div>
   </div>
