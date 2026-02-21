@@ -176,6 +176,32 @@ app.post("/api/add", auth, async (req, res) => {
   }
 });
 
+app.get("/api/export", auth, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM transactions ORDER BY created_at DESC");
+    if (result.rows.length === 0) {
+      return res.status(404).send("No transactions found.");
+    }
+
+    const fields = ['id', 'type', 'category', 'amount', 'note', 'created_at'];
+    const opts = { fields };
+
+    // Quick manual CSV generation for simplicity
+    let csv = "ID,Type,Category,Amount,Note,Date\n";
+    result.rows.forEach(row => {
+      const dateStr = new Date(row.created_at).toISOString().split('T')[0];
+      const safeNote = row.note ? `"${row.note.replace(/"/g, '""')}"` : "";
+      csv += `${row.id},${row.type},"${row.category}",${row.amount},${safeNote},${dateStr}\n`;
+    });
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('netigo_transactions.csv');
+    return res.send(csv);
+  } catch (error) {
+    res.status(500).send("Failed to export data");
+  }
+});
+
 app.post("/api/delete/:id", auth, async (req, res) => {
   const { password } = req.body;
   try {
