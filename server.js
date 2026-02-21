@@ -321,7 +321,7 @@ app.post("/api/categories", auth, async (req, res) => {
 // ---------- ADMIN PANEL (ALL USERS) ROUTES ----------
 app.get("/admin", auth, async (req, res) => {
   try {
-    const auditResult = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC");
+    const auditResult = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100");
     res.render("admin", { user: req.user, auditLogs: auditResult.rows });
   } catch (error) {
     res.status(500).send("Error loading admin panel");
@@ -384,7 +384,13 @@ app.get("/superadmin", superAuth, async (req, res) => {
 });
 
 app.delete("/api/superadmin/audit/old", superAuth, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: "Password required" });
   try {
+    const userResult = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
+    const match = await bcrypt.compare(password, userResult.rows[0].password);
+    if (!match) return res.status(403).json({ error: "Invalid password" });
+
     await pool.query("DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'");
     res.json({ success: true });
   } catch (err) {
@@ -393,7 +399,13 @@ app.delete("/api/superadmin/audit/old", superAuth, async (req, res) => {
 });
 
 app.delete("/api/superadmin/audit/all", superAuth, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: "Password required" });
   try {
+    const userResult = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
+    const match = await bcrypt.compare(password, userResult.rows[0].password);
+    if (!match) return res.status(403).json({ error: "Invalid password" });
+
     await pool.query("DELETE FROM audit_logs");
     res.json({ success: true });
   } catch (err) {
@@ -402,7 +414,13 @@ app.delete("/api/superadmin/audit/all", superAuth, async (req, res) => {
 });
 
 app.delete("/api/superadmin/audit/:id", superAuth, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: "Password required" });
   try {
+    const userResult = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
+    const match = await bcrypt.compare(password, userResult.rows[0].password);
+    if (!match) return res.status(403).json({ error: "Invalid password" });
+
     await pool.query("DELETE FROM audit_logs WHERE id = $1", [req.params.id]);
     res.json({ success: true });
   } catch (err) {

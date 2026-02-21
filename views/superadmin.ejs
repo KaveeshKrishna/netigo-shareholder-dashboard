@@ -173,7 +173,7 @@
                                         <th>Manage</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="auditTableBody">
                                     <% auditLogs.forEach(log=> { %>
                                         <tr>
                                             <td>
@@ -213,11 +213,40 @@
                                                 </tr>
                                                 <% } %>
                                 </tbody>
+                                </tbody>
                             </table>
+                        </div>
+                        <div class="pagination-controls"
+                            style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-top: 1px solid var(--border-color);">
+                            <button id="prevAuditBtn" class="btn-secondary" onclick="changeAuditPage(-1)"
+                                disabled>Previous</button>
+                            <span id="auditPageInfo" style="font-size: 14px; font-weight: 500;">Page 1</span>
+                            <button id="nextAuditBtn" class="btn-secondary" onclick="changeAuditPage(1)">Next</button>
                         </div>
                     </div>
         </section>
     </main>
+
+    <!-- Confirm Deletion Modal -->
+    <div class="modal-overlay" id="deleteConfirmModal">
+        <div class="modal card">
+            <div class="modal-header">
+                <h3>Confirm Deletion</h3>
+                <button class="close-modal"
+                    onclick="document.getElementById('deleteConfirmModal').classList.remove('active')">✕</button>
+            </div>
+            <form id="deleteConfirmForm" onsubmit="confirmDelete(event)">
+                <p style="font-size:14px; margin-bottom:15px; color:var(--text-muted);" id="deleteConfirmWarning">This
+                    action cannot be undone.</p>
+                <div class="input-group">
+                    <label>Enter Password to Confirm</label>
+                    <input name="password" id="delPassword" type="password" required>
+                </div>
+                <button type="submit" class="btn-primary w-100" style="background: var(--color-expense);">Delete
+                    Permanently</button>
+            </form>
+        </div>
+    </div>
 
     <!-- Change Password Modal -->
     <div class="modal-overlay" id="passwordModal">
@@ -324,29 +353,94 @@
             }
         }
 
-        async function deleteOldLogs() {
-            if (confirm("Are you sure you want to delete all audit logs older than 30 days?")) {
-                const res = await fetch("/api/superadmin/audit/old", { method: "DELETE" });
-                if (res.ok) window.location.reload();
-                else alert("Failed to clear old logs.");
+        async function deleteUser(id) {
+            if (confirm("Are you sure you want to completely remove this user?")) {
+                const res = await fetch("/api/admin/delete-user/" + id, { method: "DELETE" });
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert("Failed to delete user");
+                }
             }
         }
 
-        async function deleteAllLogs() {
-            if (confirm("WARNING: This will permanently delete ALL audit logs. Proceed?")) {
-                const res = await fetch("/api/superadmin/audit/all", { method: "DELETE" });
-                if (res.ok) window.location.reload();
-                else alert("Failed to clear all logs.");
+        // --- PASSWORD PROTECTED DELETE LOGIC ---
+        let pendingDeleteUrl = "";
+
+        function openDeleteModal(url, warningText) {
+            pendingDeleteUrl = url;
+            document.getElementById('deleteConfirmWarning').innerText = warningText;
+            document.getElementById('delPassword').value = '';
+            document.getElementById('deleteConfirmModal').classList.add('active');
+        }
+
+        async function confirmDelete(e) {
+            e.preventDefault();
+            const password = document.getElementById('delPassword').value;
+
+            const res = await fetch(pendingDeleteUrl, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password })
+            });
+
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to delete.");
             }
         }
 
-        async function deleteSingleLog(id) {
-            if (confirm("Are you sure you want to delete this specific log?")) {
-                const res = await fetch(`/api/superadmin/audit/${id}`, { method: "DELETE" });
-                if (res.ok) window.location.reload();
-                else alert("Failed to delete log.");
-            }
+        function deleteOldLogs() {
+            openDeleteModal("/api/superadmin/audit/old", "You are about to delete all audit logs older than 30 days.");
         }
+
+        function deleteAllLogs() {
+            openDeleteModal("/api/superadmin/audit/all", "WARNING: This will permanently delete ALL audit logs.");
+        }
+
+        function deleteSingleLog(id) {
+            openDeleteModal(`/api/superadmin/audit/${id}`, "You are about to delete this specific audit log.");
+        }
+
+        // --- PAGINATION LOGIC ---
+        let currentAuditPage = 1;
+        const auditRowsPerPage = 10;
+
+        function displayAuditPage(page) {
+            const tableBody = document.getElementById("auditTableBody");
+            if (!tableBody) return;
+            const rows = tableBody.getElementsByTagName("tr");
+            const totalRows = rows.length;
+
+            if (totalRows === 1 && rows[0].innerText.includes("No audit logs")) return;
+
+            const totalPages = Math.ceil(totalRows / auditRowsPerPage) || 1;
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            currentAuditPage = page;
+
+            for (let i = 0; i < totalRows; i++) {
+                if (i >= (page - 1) * auditRowsPerPage && i < page * auditRowsPerPage) {
+                    rows[i].style.display = "";
+                } else {
+                    rows[i].style.display = "none";
+                }
+            }
+
+            document.getElementById("auditPageInfo").innerText = `Page ${currentAuditPage} of ${totalPages}`;
+            document.getElementById("prevAuditBtn").disabled = currentAuditPage === 1;
+            document.getElementById("nextAuditBtn").disabled = currentAuditPage === totalPages;
+        }
+
+        function changeAuditPage(direction) {
+            displayAuditPage(currentAuditPage + direction);
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            displayAuditPage(1);
+        });
     </script>
 
 </body>
