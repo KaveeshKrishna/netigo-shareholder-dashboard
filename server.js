@@ -137,7 +137,16 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.get("/logout", (req, res) => {
+app.get("/logout", async (req, res) => {
+  try {
+    const token = req.cookies.token;
+    if (token) {
+      const user = jwt.verify(token, JWT_SECRET);
+      await pool.query("UPDATE users SET last_seen = NOW() - INTERVAL '1 day' WHERE id = $1", [user.id]);
+    }
+  } catch (err) {
+    // Ignore invalid tokens on logout
+  }
   res.clearCookie("token");
   res.redirect("/login");
 });
