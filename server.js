@@ -86,6 +86,7 @@ function auth(req, res, next) {
   try {
     const user = jwt.verify(token, JWT_SECRET);
     req.user = user;
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     next();
   } catch (err) {
     res.redirect("/login");
@@ -101,6 +102,7 @@ function superAuth(req, res, next) {
     const user = jwt.verify(token, JWT_SECRET);
     if (user.role !== 'superadmin') return res.redirect("/");
     req.user = user;
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     next();
   } catch (err) {
     res.redirect("/login");
