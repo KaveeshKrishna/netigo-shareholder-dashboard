@@ -162,11 +162,10 @@ async function loadOnlineUsers() {
   container.innerHTML = "";
 
   users.forEach(u => {
-    const isSuper = u.role === "superadmin" ? '⭐' : '';
     container.innerHTML += `
       <div class="online-user">
         <span class="status-dot"></span>
-        <span class="user-name">${u.username.split('@')[0]} ${isSuper}</span>
+        <span class="user-name">${u.username.split('@')[0]}</span>
       </div>
     `;
   });
@@ -176,4 +175,4 @@ async function loadOnlineUsers() {
 load();
 loadCategories();
 pingPresence();
-setInterval(pingPresence, 60000); // Ping every 1 minute
+setInterval(pingPresence, 2000); // Ping every 2 seconds

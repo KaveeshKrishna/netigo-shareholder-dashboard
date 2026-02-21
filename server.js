@@ -95,6 +95,21 @@ function auth(req, res, next) {
   }
 }
 
+// 🔒 SuperAdmin Middleware
+function superAuth(req, res, next) {
+  const token = req.cookies.token;
+  if (!token) return res.redirect("/login");
+
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    if (user.role !== 'superadmin') return res.redirect("/");
+    req.user = user;
+    next();
+  } catch (err) {
+    res.redirect("/login");
+  }
+}
+
 // ---------- AUTH LOGIC ----------
 app.get("/login", (req, res) => {
   res.render("login", { error: null });
@@ -113,7 +128,7 @@ app.post("/login", async (req, res) => {
     if (!match) return res.render("login", { error: "Invalid credentials" });
 
     // Issue JWT cookie
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
     res.redirect("/");
   } catch (error) {
@@ -218,6 +233,39 @@ app.post("/api/categories", auth, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to add category" });
+  }
+});
+
+// ---------- ADMIN PANEL ROUTES ----------
+app.get("/admin", superAuth, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT id, username, role, last_seen FROM users ORDER BY id ASC");
+    res.render("admin", { user: req.user, usersList: result.rows });
+  } catch (error) {
+    res.status(500).send("Error loading admin panel");
+  }
+});
+
+app.post("/api/admin/change-password/:id", superAuth, async (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword) return res.status(400).json({ error: "Password required" });
+  try {
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hash, req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update password" });
+  }
+});
+
+app.post("/api/admin/add-user", superAuth, async (req, res) => {
+  const { username, password, role } = req.body;
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    await pool.query("INSERT INTO users (username, password, role) VALUES ($1, $2, $3)", [username, hash, role || 'admin']);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to add user" });
   }
 });
 
