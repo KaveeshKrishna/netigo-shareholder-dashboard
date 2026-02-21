@@ -185,9 +185,6 @@ app.post("/api/add", auth, async (req, res) => {
   try {
     const tDate = date || new Date().toISOString().split('T')[0];
 
-    // Passive 30-day cleanup of audit logs
-    await pool.query("DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'");
-
     await pool.query(
       "INSERT INTO transactions (type, category, amount, note, transaction_date) VALUES ($1, $2, $3, $4, $5)",
       [type, category, amount, note, tDate]
@@ -369,9 +366,47 @@ app.post("/api/change-password", auth, async (req, res) => {
 app.get("/superadmin", superAuth, async (req, res) => {
   try {
     const usersResult = await pool.query("SELECT id, username, role, last_seen FROM users ORDER BY id ASC");
-    res.render("superadmin", { user: req.user, usersList: usersResult.rows });
+
+    // Audit Logging Management
+    const auditResult = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC");
+    const countResult = await pool.query("SELECT COUNT(*) FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'");
+    const pendingDeletions = parseInt(countResult.rows[0].count);
+
+    res.render("superadmin", {
+      user: req.user,
+      usersList: usersResult.rows,
+      auditLogs: auditResult.rows,
+      pendingDeletions: pendingDeletions
+    });
   } catch (error) {
     res.status(500).send("Error loading superadmin panel");
+  }
+});
+
+app.delete("/api/superadmin/audit/old", superAuth, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'");
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to clear old logs" });
+  }
+});
+
+app.delete("/api/superadmin/audit/all", superAuth, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM audit_logs");
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to clear all logs" });
+  }
+});
+
+app.delete("/api/superadmin/audit/:id", superAuth, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM audit_logs WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete log" });
   }
 });
 
