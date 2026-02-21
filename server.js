@@ -23,9 +23,8 @@ app.set("views", path.join(__dirname, "views"));
 // Database Initialization (Auto-Create Schema)
 async function initDb() {
   try {
-    // Note: We are dropping tables for testing / schema evolution since the user approved it
-    await pool.query("DROP TABLE IF EXISTS users CASCADE");
-    await pool.query("DROP TABLE IF EXISTS categories CASCADE");
+    // Tables will only be created the first time the app is run
+
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
