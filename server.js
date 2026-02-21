@@ -209,6 +209,16 @@ app.post("/api/ping", auth, async (req, res) => {
   }
 });
 
+// Force Database Initialization
+app.get("/api/init", async (req, res) => {
+  try {
+    await initDb();
+    res.json({ success: true, message: "Database tables and founders have been successfully initialized." });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to force database initialization." });
+  }
+});
+
 // Fetch all users with online status
 app.get("/api/online", auth, async (req, res) => {
   try {
