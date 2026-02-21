@@ -90,10 +90,10 @@
                                     <td>
                                         <div style="display:flex; gap:10px;">
                                             <button class="btn-primary" style="padding: 6px 12px; font-size: 12px;"
-                                                onclick="openPasswordModal(<%= u.id %>, '<%= u.username %>')">Change
+                                                onclick="openPasswordModal('<%= u.id %>', '<%= u.username %>')">Change
                                                 Password</button>
                                             <% if (u.id !==user.id) { %>
-                                                <button class="btn-icon-danger" onclick="deleteUser(<%= u.id %>)">
+                                                <button class="btn-icon-danger" onclick="deleteUser('<%= u.id %>')">
                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                                                         stroke="currentColor" stroke-width="2">
                                                         <polyline points="3 6 5 6 21 6"></polyline>
