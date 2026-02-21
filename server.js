@@ -33,7 +33,7 @@ async function initDb() {
         username VARCHAR(255) UNIQUE NOT NULL,
         password TEXT NOT NULL,
         role VARCHAR(50) DEFAULT 'admin',
-        last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        last_seen TIMESTAMP DEFAULT (CURRENT_TIMESTAMP - INTERVAL '1 day')
       )
     `);
 
