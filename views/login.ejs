@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Netigo Access Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body class="center auth-body">
+  <div class="background-effects">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+  </div>
+
+  <form class="card auth-card" method="POST" action="/login">
+    <div class="auth-header">
+      <div class="logo-placeholder">N</div>
+      <h2>Netigo Admin</h2>
+      <p>Secure Dashboard Access</p>
+    </div>
+
+    <% if (error) { %>
+      <div class="error-badge">
+        <%= error %>
+      </div>
+      <% } %>
+
+        <div class="input-group">
+          <label for="username">Administrator</label>
+          <input id="username" name="username" placeholder="Enter your username" required autocomplete="off">
+        </div>
+
+        <div class="input-group">
+          <label for="password">Security Key</label>
+          <input id="password" name="password" type="password" placeholder="Enter your password" required>
+        </div>
+
+        <button type="submit" class="btn-primary">Authenticate <span class="arrow">→</span></button>
+  </form>
+</body>
+
+</html>
