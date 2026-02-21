@@ -129,6 +129,56 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Audit Logs Section -->
+            <div class="card recent-card">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>Audit Trail (30 Days)</h3>
+                    <a href="/api/admin/export-audit" class="btn-primary"
+                        style="background: var(--color-investment); text-decoration: none; padding: 6px 12px; font-size: 13px;">
+                        Export CSV
+                    </a>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Action</th>
+                                <th>Details</th>
+                                <th>User</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% auditLogs.forEach(log=> { %>
+                                <tr>
+                                    <td>
+                                        <%= new Date(log.created_at).toLocaleString() %>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="badge badge-<%= log.action === 'INSERT' ? 'investment' : 'expense' %>">
+                                            <%= log.action %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <%= log.details %>
+                                    </td>
+                                    <td><strong>
+                                            <%= log.performed_by %>
+                                        </strong></td>
+                                </tr>
+                                <% }); %>
+                                    <% if (auditLogs.length===0) { %>
+                                        <tr>
+                                            <td colspan="4" style="text-align: center; color: var(--text-muted);">No
+                                                audit logs available.</td>
+                                        </tr>
+                                        <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
     </main>
 

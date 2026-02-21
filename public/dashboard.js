@@ -23,7 +23,7 @@ async function load() {
         <td><span class="badge badge-${t.type}">${t.type}</span></td>
         <td><strong>${t.category}</strong><br><small style="color:var(--text-muted)">${t.note || ""}</small></td>
         <td style="font-weight: 600">${formatMoney(t.amount)}</td>
-        <td>${formatDate(t.created_at)}</td>
+        <td>${formatDate(t.transaction_date || t.created_at)}</td>
         <td>
           <button class="btn-icon-danger" onclick="openDeleteModal(${t.id})">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -102,7 +102,10 @@ document.getElementById("newCategoryBtn").onclick = async () => {
 
 // 2. Add Transaction Form
 const txModal = document.getElementById("transactionModal");
-document.getElementById("openModalBtn").onclick = () => txModal.classList.add("active");
+document.getElementById("openModalBtn").onclick = () => {
+  document.getElementById("transactionDate").valueAsDate = new Date();
+  txModal.classList.add("active");
+};
 document.getElementById("closeModalBtn").onclick = () => txModal.classList.remove("active");
 
 document.getElementById("addForm").onsubmit = async e => {

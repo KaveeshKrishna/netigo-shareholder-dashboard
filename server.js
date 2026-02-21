@@ -43,6 +43,21 @@ async function initDb() {
         category VARCHAR(255) NOT NULL,
         amount DECIMAL(12,2) NOT NULL,
         note TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        transaction_date DATE DEFAULT CURRENT_DATE
+      )
+    `);
+
+    // Ensure older database schemas get the new column dynamically
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_date DATE DEFAULT CURRENT_DATE`);
+    await pool.query(`UPDATE transactions SET transaction_date = DATE(created_at) WHERE transaction_date IS NULL`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        action VARCHAR(50) NOT NULL,
+        details TEXT NOT NULL,
+        performed_by VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -158,7 +173,7 @@ app.get("/", auth, (req, res) => {
 // ---------- API ROUTES ----------
 app.get("/api/transactions", auth, async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM transactions ORDER BY created_at DESC");
+    const result = await pool.query("SELECT * FROM transactions ORDER BY transaction_date DESC, created_at DESC");
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch transactions" });
@@ -166,12 +181,24 @@ app.get("/api/transactions", auth, async (req, res) => {
 });
 
 app.post("/api/add", auth, async (req, res) => {
-  const { type, category, amount, note } = req.body;
+  const { type, category, amount, note, date } = req.body;
   try {
+    const tDate = date || new Date().toISOString().split('T')[0];
+
+    // Passive 30-day cleanup of audit logs
+    await pool.query("DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'");
+
     await pool.query(
-      "INSERT INTO transactions (type, category, amount, note) VALUES ($1, $2, $3, $4)",
-      [type, category, amount, note]
+      "INSERT INTO transactions (type, category, amount, note, transaction_date) VALUES ($1, $2, $3, $4, $5)",
+      [type, category, amount, note, tDate]
     );
+
+    // Record to audit log
+    await pool.query(
+      "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
+      ['INSERT', `Added ${type.toUpperCase()} of ₹${amount} for ${category}`, req.user.username]
+    );
+
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to add transaction" });
@@ -180,20 +207,20 @@ app.post("/api/add", auth, async (req, res) => {
 
 app.get("/api/export", auth, async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM transactions ORDER BY created_at DESC");
+    const result = await pool.query("SELECT * FROM transactions ORDER BY transaction_date DESC, created_at DESC");
     if (result.rows.length === 0) {
       return res.status(404).send("No transactions found.");
     }
 
-    const fields = ['id', 'type', 'category', 'amount', 'note', 'created_at'];
-    const opts = { fields };
-
     // Quick manual CSV generation for simplicity
     let csv = "ID,Type,Category,Amount,Note,Date\n";
     result.rows.forEach(row => {
-      const dateStr = new Date(row.created_at).toISOString().split('T')[0];
+      const d = new Date(row.transaction_date || row.created_at);
+      const dateStr = d.toISOString().split('T')[0];
       const safeNote = row.note ? `"${row.note.replace(/"/g, '""')}"` : "";
-      csv += `${row.id},${row.type},"${row.category}",${row.amount},${safeNote},${dateStr}\n`;
+
+      // Wrapping date in ="..." forces Excel to treat it as string bypassing the ###### width auto-formatting bug
+      csv += `${row.id},${row.type},"${row.category}",${row.amount},${safeNote},="${dateStr}"\n`;
     });
 
     res.header('Content-Type', 'text/csv');
@@ -216,7 +243,15 @@ app.post("/api/delete/:id", auth, async (req, res) => {
     if (!match) return res.status(401).json({ error: "Incorrect password" });
 
     // 2. Perform deletion
-    await pool.query("DELETE FROM transactions WHERE id = $1", [req.params.id]);
+    const txRes = await pool.query("SELECT * FROM transactions WHERE id = $1", [req.params.id]);
+    const tx = txRes.rows[0];
+    if (tx) {
+      await pool.query("DELETE FROM transactions WHERE id = $1", [req.params.id]);
+      await pool.query(
+        "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
+        ['DELETE', `Deleted ${tx.type.toUpperCase()} of ₹${tx.amount} (${tx.category})`, req.user.username]
+      );
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete transaction" });
@@ -289,10 +324,32 @@ app.post("/api/categories", auth, async (req, res) => {
 // ---------- ADMIN PANEL ROUTES ----------
 app.get("/admin", superAuth, async (req, res) => {
   try {
-    const result = await pool.query("SELECT id, username, role, last_seen FROM users ORDER BY id ASC");
-    res.render("admin", { user: req.user, usersList: result.rows });
+    const usersResult = await pool.query("SELECT id, username, role, last_seen FROM users ORDER BY id ASC");
+    const auditResult = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC");
+    res.render("admin", { user: req.user, usersList: usersResult.rows, auditLogs: auditResult.rows });
   } catch (error) {
     res.status(500).send("Error loading admin panel");
+  }
+});
+
+app.get("/api/admin/export-audit", superAuth, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC");
+    if (result.rows.length === 0) return res.status(404).send("No audit logs found.");
+
+    let csv = "ID,Action,Details,Performed By,Date\n";
+    result.rows.forEach(row => {
+      const d = new Date(row.created_at);
+      const dateStr = d.toISOString().replace('T', ' ').split('.')[0];
+      const safeDetails = row.details ? `"${row.details.replace(/"/g, '""')}"` : "";
+      csv += `${row.id},${row.action},${safeDetails},${row.performed_by},="${dateStr}"\n`;
+    });
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('netigo_audit_logs.csv');
+    return res.send(csv);
+  } catch (error) {
+    res.status(500).send("Failed to export audit logs");
   }
 });
 
