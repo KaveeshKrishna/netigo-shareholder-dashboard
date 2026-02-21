@@ -321,18 +321,17 @@ app.post("/api/categories", auth, async (req, res) => {
   }
 });
 
-// ---------- ADMIN PANEL ROUTES ----------
-app.get("/admin", superAuth, async (req, res) => {
+// ---------- ADMIN PANEL (ALL USERS) ROUTES ----------
+app.get("/admin", auth, async (req, res) => {
   try {
-    const usersResult = await pool.query("SELECT id, username, role, last_seen FROM users ORDER BY id ASC");
     const auditResult = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC");
-    res.render("admin", { user: req.user, usersList: usersResult.rows, auditLogs: auditResult.rows });
+    res.render("admin", { user: req.user, auditLogs: auditResult.rows });
   } catch (error) {
     res.status(500).send("Error loading admin panel");
   }
 });
 
-app.get("/api/admin/export-audit", superAuth, async (req, res) => {
+app.get("/api/audit/export", auth, async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC");
     if (result.rows.length === 0) return res.status(404).send("No audit logs found.");
@@ -350,6 +349,29 @@ app.get("/api/admin/export-audit", superAuth, async (req, res) => {
     return res.send(csv);
   } catch (error) {
     res.status(500).send("Failed to export audit logs");
+  }
+});
+
+app.post("/api/change-password", auth, async (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword) return res.status(400).json({ error: "Password required" });
+  try {
+    const hash = await bcrypt.hash(newPassword, 10);
+    // User changes their own password
+    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hash, req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update password" });
+  }
+});
+
+// ---------- SUPERADMIN ONLY ROUTES ----------
+app.get("/superadmin", superAuth, async (req, res) => {
+  try {
+    const usersResult = await pool.query("SELECT id, username, role, last_seen FROM users ORDER BY id ASC");
+    res.render("superadmin", { user: req.user, usersList: usersResult.rows });
+  } catch (error) {
+    res.status(500).send("Error loading superadmin panel");
   }
 });
 

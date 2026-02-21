@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Netigo Admin Control</title>
+    <title>Netigo Admin Profile</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -41,14 +41,24 @@
                 Admin Panel
             </a>
 
-            <a href="/logout" class="menu-item logout-btn" style="margin-top: auto;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-                Logout
-            </a>
+            <% if (user.role==='superadmin' ) { %>
+                <a href="/superadmin" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Superadmin
+                </a>
+                <% } %>
+
+                    <a href="/logout" class="menu-item logout-btn" style="margin-top: auto;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        Logout
+                    </a>
         </div>
     </nav>
 
@@ -63,78 +73,25 @@
                     </svg>
                 </button>
                 <div class="greeting">
-                    <h1>Superadmin Control</h1>
-                    <p>Exclusive access for <span class="highlight">
+                    <h1>Admin Profile</h1>
+                    <p>Welcome, <span class="highlight">
                             <%= user.username %>
                         </span></p>
                 </div>
             </div>
             <div class="topbar-actions">
-                <button class="btn-primary" onclick="document.getElementById('addUserModal').classList.add('active')">
-                    + Add User
+                <button class="btn-primary" onclick="document.getElementById('passwordModal').classList.add('active')">
+                    Change My Password
                 </button>
             </div>
         </header>
 
         <section class="content-grid" style="grid-template-columns: 1fr;">
-            <div class="card recent-card">
-                <div class="card-header">
-                    <h3>User Management</h3>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Username</th>
-                                <th>Role</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% usersList.forEach(u=> { %>
-                                <tr>
-                                    <td>#<%= u.id %>
-                                    </td>
-                                    <td><strong>
-                                            <%= u.username %>
-                                        </strong></td>
-                                    <td>
-                                        <span
-                                            class="badge badge-<%= u.role === 'superadmin' ? 'investment' : 'income' %>">
-                                            <%= u.role %>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style="display:flex; gap:10px;">
-                                            <button class="btn-primary" style="padding: 6px 12px; font-size: 12px;"
-                                                onclick="openPasswordModal('<%= u.id %>', '<%= u.username %>')">Change
-                                                Password</button>
-                                            <% if (u.id !==user.id) { %>
-                                                <button class="btn-icon-danger" onclick="deleteUser('<%= u.id %>')">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                        stroke="currentColor" stroke-width="2">
-                                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                                        <path
-                                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                                        </path>
-                                                    </svg>
-                                                </button>
-                                                <% } %>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <% }); %>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
             <!-- Audit Logs Section -->
             <div class="card recent-card">
                 <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h3>Audit Trail (30 Days)</h3>
-                    <a href="/api/admin/export-audit" class="btn-primary"
+                    <a href="/api/audit/export" class="btn-primary"
                         style="background: var(--color-investment); text-decoration: none; padding: 6px 12px; font-size: 13px;">
                         Export CSV
                     </a>
@@ -186,64 +143,26 @@
     <div class="modal-overlay" id="passwordModal">
         <div class="modal card">
             <div class="modal-header">
-                <h3 id="pwdModalTitle">Change Password</h3>
+                <h3>Change My Password</h3>
                 <button class="close-modal"
                     onclick="document.getElementById('passwordModal').classList.remove('active')">✕</button>
             </div>
-            <form id="passwordForm" onsubmit="changePassword(event)">
-                <input type="hidden" id="pwdUserId">
+            <form id="passwordForm" onsubmit="changeMyPassword(event)">
                 <div class="input-group">
                     <label>New Password</label>
-                    <input name="newPassword" id="newPassword" type="text" required>
+                    <input name="newPassword" id="newPassword" type="password" required>
                 </div>
                 <button type="submit" class="btn-primary w-100">Update Password</button>
             </form>
         </div>
     </div>
 
-    <!-- Add User Modal -->
-    <div class="modal-overlay" id="addUserModal">
-        <div class="modal card">
-            <div class="modal-header">
-                <h3>Add New User</h3>
-                <button class="close-modal"
-                    onclick="document.getElementById('addUserModal').classList.remove('active')">✕</button>
-            </div>
-            <form id="addUserForm" onsubmit="addUser(event)">
-                <div class="input-group">
-                    <label>Username (Email format preferred)</label>
-                    <input name="username" id="newUsername" type="text" required>
-                </div>
-                <div class="input-group">
-                    <label>Role</label>
-                    <select name="role" id="newRole">
-                        <option value="admin">Admin</option>
-                        <option value="superadmin">Superadmin</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>Temporary Password</label>
-                    <input name="password" id="newUserPwd" type="text" required>
-                </div>
-                <button type="submit" class="btn-primary w-100">Create Account</button>
-            </form>
-        </div>
-    </div>
-
     <script>
-        function openPasswordModal(id, username) {
-            document.getElementById('pwdUserId').value = id;
-            document.getElementById('pwdModalTitle').innerText = 'Change Password for ' + username;
-            document.getElementById('newPassword').value = '';
-            document.getElementById('passwordModal').classList.add('active');
-        }
-
-        async function changePassword(e) {
+        async function changeMyPassword(e) {
             e.preventDefault();
-            const id = document.getElementById('pwdUserId').value;
             const newPassword = document.getElementById('newPassword').value;
 
-            const res = await fetch("/api/admin/change-password/" + id, {
+            const res = await fetch("/api/change-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ newPassword })
@@ -251,43 +170,13 @@
 
             if (res.ok) {
                 alert("Password updated successfully.");
-                window.location.reload();
+                document.getElementById('passwordModal').classList.remove('active');
+                document.getElementById('passwordForm').reset();
             } else {
                 alert("Failed to update password.");
             }
         }
-
-        async function addUser(e) {
-            e.preventDefault();
-            const username = document.getElementById('newUsername').value;
-            const password = document.getElementById('newUserPwd').value;
-            const role = document.getElementById('newRole').value;
-
-            const res = await fetch("/api/admin/add-user", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password, role })
-            });
-
-            if (res.ok) {
-                window.location.reload();
-            } else {
-                alert("Failed to add user. Username might already exist.");
-            }
-        }
-
-        async function deleteUser(id) {
-            if (confirm("Are you sure you want to completely remove this user?")) {
-                const res = await fetch("/api/admin/delete-user/" + id, { method: "DELETE" });
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    alert("Failed to delete user");
-                }
-            }
-        }
     </script>
-
 </body>
 
 </html>
