@@ -242,6 +242,10 @@
                     <label>Enter Password to Confirm</label>
                     <input name="password" id="delPassword" type="password" required>
                 </div>
+                <div class="input-group">
+                    <label>Please type "DELETE" to confirm</label>
+                    <input name="confirm_text" id="delConfirmText" type="text" placeholder="DELETE" required>
+                </div>
                 <button type="submit" class="btn-primary w-100" style="background: var(--color-expense);">Delete
                     Permanently</button>
             </form>
@@ -371,12 +375,18 @@
             pendingDeleteUrl = url;
             document.getElementById('deleteConfirmWarning').innerText = warningText;
             document.getElementById('delPassword').value = '';
+            document.getElementById('delConfirmText').value = '';
             document.getElementById('deleteConfirmModal').classList.add('active');
         }
 
         async function confirmDelete(e) {
             e.preventDefault();
             const password = document.getElementById('delPassword').value;
+            const confirmText = document.getElementById('delConfirmText').value;
+
+            if (confirmText !== 'DELETE') {
+                return alert("You must type exactly 'DELETE' to confirm this action.");
+            }
 
             const res = await fetch(pendingDeleteUrl, {
                 method: "DELETE",

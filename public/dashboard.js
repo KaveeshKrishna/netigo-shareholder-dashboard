@@ -144,6 +144,12 @@ document.getElementById("deleteForm").onsubmit = async e => {
   const id = document.getElementById("deleteId").value;
   const formData = new FormData(e.target);
   const password = formData.get("password");
+  const confirmText = formData.get("confirm_text");
+
+  if (confirmText !== 'DELETE') {
+    alert("You must type exactly 'DELETE' to confirm.");
+    return;
+  }
 
   const res = await fetch("/api/delete/" + id, {
     method: "POST",
@@ -292,9 +298,12 @@ async function saveRecurringCost(e) {
 }
 
 async function deleteRecurringCost(id) {
-  if (confirm("Are you sure you want to stop tracking this recurring overhead?")) {
+  const confirmation = prompt("To stop tracking this recurring overhead, type exactly 'DELETE'");
+  if (confirmation === 'DELETE') {
     await fetch("/api/recurring/" + id, { method: "DELETE" });
-    loadRecurringCosts();
+    pollData(); // immediately ping instead of waiting for interval
+  } else if (confirmation !== null) {
+    alert("Verification failed. Recurring cost was not deleted.");
   }
 }
 
