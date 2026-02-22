@@ -343,26 +343,8 @@
             }
         }
 
-        async function deleteUser(id) {
-            if (confirm("Are you sure you want to completely remove this user?")) {
-                const res = await fetch("/api/admin/delete-user/" + id, { method: "DELETE" });
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    alert("Failed to delete user");
-                }
-            }
-        }
-
-        async function deleteUser(id) {
-            if (confirm("Are you sure you want to completely remove this user?")) {
-                const res = await fetch("/api/admin/delete-user/" + id, { method: "DELETE" });
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    alert("Failed to delete user");
-                }
-            }
+        function deleteUser(id) {
+            openDeleteModal("/api/admin/delete-user/" + id, "WARNING: You are about to permanently delete this user account.");
         }
 
         // --- PASSWORD PROTECTED DELETE LOGIC ---
