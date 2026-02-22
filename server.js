@@ -10,7 +10,7 @@ const app = express();
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-netigo-key";
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgres://user:pass@host/db", // Ensure you set DATABASE_URL in Vercel
+  connectionString: "postgresql://netigo:netigodb@localhost:5432/netigodb"
 });
 
 let dataVersion = 1;
