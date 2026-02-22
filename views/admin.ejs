@@ -52,7 +52,19 @@
                 </a>
                 <% } %>
 
-                    <a href="/logout" class="menu-item logout-btn" style="margin-top: auto;">
+                    <a href="#" class="menu-item"
+                        onclick="document.getElementById('aboutModal').classList.add('active');"
+                        style="margin-top: auto;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        About / What's New
+                    </a>
+
+                    <a href="/logout" class="menu-item logout-btn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -169,6 +181,33 @@
             </div>
         </section>
     </main>
+
+    <!-- About / What's New Modal -->
+    <div class="modal-overlay" id="aboutModal">
+        <div class="modal card">
+            <div class="modal-header">
+                <h3>About Netigo</h3>
+                <button class="close-modal"
+                    onclick="document.getElementById('aboutModal').classList.remove('active')">✕</button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <p style="color: var(--text-main); font-size: 16px; margin-bottom: 5px;"><strong>Company:</strong>
+                    Netigo</p>
+                <p style="color: var(--text-muted); font-size: 14px;"><strong>Developed and Managed By:</strong> Kaveesh
+                    Krishna Pandey</p>
+            </div>
+
+            <div
+                style="background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--color-investment); padding: 15px; border-radius: 8px;">
+                <h4 style="color: var(--color-investment); margin-bottom: 10px;">What's New</h4>
+                <ul style="color: var(--text-muted); font-size: 14px; padding-left: 20px; margin: 0; line-height: 1.6;">
+                    <li><strong>Drag & Drop Dashboard added:</strong> You can now use the 'Edit Dashboard Layout' button
+                        to freely move and resize widgets on any page. Your custom layout is securely saved to your
+                        local browser!</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- Change Password Modal -->
     <div class="modal-overlay" id="passwordModal">
