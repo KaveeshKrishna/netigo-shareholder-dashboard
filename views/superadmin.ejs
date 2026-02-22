@@ -239,12 +239,9 @@
                 <p style="font-size:14px; margin-bottom:15px; color:var(--text-muted);" id="deleteConfirmWarning">This
                     action cannot be undone.</p>
                 <div class="input-group">
-                    <label>Enter Password to Confirm</label>
-                    <input name="password" id="delPassword" type="password" required>
-                </div>
-                <div class="input-group">
                     <label>Please type "DELETE" to confirm</label>
-                    <input name="confirm_text" id="delConfirmText" type="text" placeholder="DELETE" required>
+                    <input name="confirm_text" id="delConfirmText" type="text" placeholder="DELETE" required
+                        autocomplete="off">
                 </div>
                 <button type="submit" class="btn-primary w-100" style="background: var(--color-expense);">Delete
                     Permanently</button>
@@ -374,14 +371,12 @@
         function openDeleteModal(url, warningText) {
             pendingDeleteUrl = url;
             document.getElementById('deleteConfirmWarning').innerText = warningText;
-            document.getElementById('delPassword').value = '';
             document.getElementById('delConfirmText').value = '';
             document.getElementById('deleteConfirmModal').classList.add('active');
         }
 
         async function confirmDelete(e) {
             e.preventDefault();
-            const password = document.getElementById('delPassword').value;
             const confirmText = document.getElementById('delConfirmText').value;
 
             if (confirmText !== 'DELETE') {
@@ -390,8 +385,7 @@
 
             const res = await fetch(pendingDeleteUrl, {
                 method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password })
+                headers: { "Content-Type": "application/json" }
             });
 
             if (res.ok) {

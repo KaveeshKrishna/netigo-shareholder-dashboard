@@ -130,8 +130,9 @@ document.getElementById("addForm").onsubmit = async e => {
 
 // 3. Secure Deletion
 const delModal = document.getElementById("deleteModal");
-function openDeleteModal(id) {
+function openDeleteModal(id, type = 'transaction') {
   document.getElementById("deleteId").value = id;
+  document.getElementById("deleteType").value = type;
   document.getElementById("deleteForm").reset();
   delModal.classList.add("active");
 }
@@ -142,8 +143,8 @@ function closeDeleteModal() {
 document.getElementById("deleteForm").onsubmit = async e => {
   e.preventDefault();
   const id = document.getElementById("deleteId").value;
+  const type = document.getElementById("deleteType").value;
   const formData = new FormData(e.target);
-  const password = formData.get("password");
   const confirmText = formData.get("confirm_text");
 
   if (confirmText !== 'DELETE') {
@@ -151,16 +152,18 @@ document.getElementById("deleteForm").onsubmit = async e => {
     return;
   }
 
-  const res = await fetch("/api/delete/" + id, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password })
+  const endpoint = type === 'transaction' ? `/api/delete/${id}` : `/api/recurring/${id}`;
+  const method = type === 'transaction' ? "POST" : "DELETE";
+
+  const res = await fetch(endpoint, {
+    method: method,
+    headers: { "Content-Type": "application/json" }
   });
 
   const data = await res.json();
   if (data.success) {
     closeDeleteModal();
-    load();
+    pollData();
   } else {
     alert(data.error);
   }
@@ -298,13 +301,7 @@ async function saveRecurringCost(e) {
 }
 
 async function deleteRecurringCost(id) {
-  const confirmation = prompt("To stop tracking this recurring overhead, type exactly 'DELETE'");
-  if (confirmation === 'DELETE') {
-    await fetch("/api/recurring/" + id, { method: "DELETE" });
-    pollData(); // immediately ping instead of waiting for interval
-  } else if (confirmation !== null) {
-    alert("Verification failed. Recurring cost was not deleted.");
-  }
+  openDeleteModal(id, 'recurring');
 }
 
 

@@ -255,16 +255,13 @@
         <button class="close-modal" onclick="closeDeleteModal()">✕</button>
       </div>
       <form id="deleteForm">
-        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">Please enter your password to
-          authorize this deletion.</p>
+        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">This action cannot be undone. Please
+          confirm.</p>
         <input type="hidden" id="deleteId">
-        <div class="input-group">
-          <label>Password</label>
-          <input name="password" type="password" required>
-        </div>
+        <input type="hidden" id="deleteType" value="transaction">
         <div class="input-group">
           <label>Please type "DELETE" to confirm</label>
-          <input name="confirm_text" type="text" placeholder="DELETE" required>
+          <input name="confirm_text" type="text" placeholder="DELETE" required autocomplete="off">
         </div>
         <button type="submit" class="btn-primary w-100" style="background: var(--color-expense);">Delete Record</button>
       </form>

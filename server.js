@@ -242,17 +242,8 @@ app.get("/api/export", auth, async (req, res) => {
 });
 
 app.post("/api/delete/:id", auth, async (req, res) => {
-  const { password } = req.body;
   try {
-    // 1. Verify user password securely
-    const userRes = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
-    const user = userRes.rows[0];
-    if (!user) return res.status(403).json({ error: "User not found" });
-
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: "Incorrect password" });
-
-    // 2. Perform deletion
+    // 1. Perform deletion
     const txRes = await pool.query("SELECT * FROM transactions WHERE id = $1", [req.params.id]);
     const tx = txRes.rows[0];
     if (tx) {
@@ -448,13 +439,7 @@ app.get("/superadmin", superAuth, async (req, res) => {
 });
 
 app.delete("/api/superadmin/audit/old", superAuth, async (req, res) => {
-  const { password } = req.body;
-  if (!password) return res.status(400).json({ error: "Password required" });
   try {
-    const userResult = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
-    const match = await bcrypt.compare(password, userResult.rows[0].password);
-    if (!match) return res.status(403).json({ error: "Invalid password" });
-
     await pool.query("DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'");
     res.json({ success: true });
   } catch (err) {
@@ -463,13 +448,7 @@ app.delete("/api/superadmin/audit/old", superAuth, async (req, res) => {
 });
 
 app.delete("/api/superadmin/audit/all", superAuth, async (req, res) => {
-  const { password } = req.body;
-  if (!password) return res.status(400).json({ error: "Password required" });
   try {
-    const userResult = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
-    const match = await bcrypt.compare(password, userResult.rows[0].password);
-    if (!match) return res.status(403).json({ error: "Invalid password" });
-
     await pool.query("DELETE FROM audit_logs");
     res.json({ success: true });
   } catch (err) {
@@ -478,13 +457,7 @@ app.delete("/api/superadmin/audit/all", superAuth, async (req, res) => {
 });
 
 app.delete("/api/superadmin/audit/:id", superAuth, async (req, res) => {
-  const { password } = req.body;
-  if (!password) return res.status(400).json({ error: "Password required" });
   try {
-    const userResult = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
-    const match = await bcrypt.compare(password, userResult.rows[0].password);
-    if (!match) return res.status(403).json({ error: "Invalid password" });
-
     await pool.query("DELETE FROM audit_logs WHERE id = $1", [req.params.id]);
     res.json({ success: true });
   } catch (err) {
