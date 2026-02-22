@@ -26,9 +26,16 @@ async function load() {
         <td style="font-weight: 600">${formatMoney(t.amount)}</td>
         <td>${formatDate(t.transaction_date || t.created_at)}</td>
         <td>
-          <button class="btn-icon-danger" onclick="openDeleteModal(${t.id})">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
+          <div style="display:flex; gap:5px;">
+            ${t.type === 'expense' ? `
+              <button class="btn-icon-danger" style="background: rgba(139, 92, 246, 0.1); color: var(--color-investment);" onclick="makeRecurring('${t.category.replace(/'/g, "\\'")}', ${t.amount})" title="Make Recurring">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.23l.14.34"/></svg>
+              </button>
+            ` : ''}
+            <button class="btn-icon-danger" onclick="openDeleteModal(${t.id})" title="Delete Transaction">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
         </td>
       </tr>`;
   });
@@ -192,8 +199,109 @@ async function loadOnlineUsers() {
   container.innerHTML = html;
 }
 
+// 5. OVERALL METRICS & RECURRING COSTS
+let allRecurringCosts = [];
+
+async function loadRecurringCosts() {
+  const res = await fetch("/api/recurring");
+  allRecurringCosts = await res.json();
+  renderRecurringCosts();
+}
+
+function renderRecurringCosts() {
+  const timeframe = document.getElementById("recurringTimeframe").value;
+  const list = document.getElementById("recurringList");
+  let totalProjection = 0;
+  let html = "";
+
+  document.getElementById("projectedLabel").innerText = timeframe;
+
+  if (allRecurringCosts.length === 0) {
+    list.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">No recurring costs tracked.</div>`;
+    document.getElementById("projectedTotal").innerText = formatMoney(0);
+    return;
+  }
+
+  allRecurringCosts.forEach(cost => {
+    let projectedAmt = parseFloat(cost.amount);
+
+    // Normalize math to daily, then scale
+    let daily = 0;
+    if (cost.billing_cycle === 'daily') daily = projectedAmt;
+    if (cost.billing_cycle === 'weekly') daily = projectedAmt / 7;
+    if (cost.billing_cycle === 'monthly') daily = projectedAmt / 30;
+    if (cost.billing_cycle === 'yearly') daily = projectedAmt / 365;
+
+    let targetAmt = 0;
+    if (timeframe === 'daily') targetAmt = daily;
+    if (timeframe === 'weekly') targetAmt = daily * 7;
+    if (timeframe === 'monthly') targetAmt = daily * 30;
+    if (timeframe === 'yearly') targetAmt = daily * 365;
+
+    totalProjection += targetAmt;
+
+    html += `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid rgba(255,255,255,0.05);">
+        <div>
+          <strong style="color:var(--text-main); font-size:14px;">${cost.name}</strong>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+            <span style="text-transform:capitalize;">${cost.billing_cycle}</span> • Original: ${formatMoney(cost.amount)}
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:15px;">
+          <span style="color:var(--color-expense); font-weight:600;">${formatMoney(targetAmt)}</span>
+          <button class="btn-icon-danger" onclick="deleteRecurringCost(${cost.id})" style="padding:4px; background:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  list.innerHTML = html;
+  document.getElementById("projectedTotal").innerText = formatMoney(totalProjection);
+}
+
+function openAddRecurringModal() {
+  document.getElementById("recurringForm").reset();
+  document.getElementById("recurringModalTitle").innerText = "Add Recurring Cost";
+  document.getElementById('recurringModal').classList.add('active');
+}
+
+function makeRecurring(name, amount) {
+  document.getElementById("recurringForm").reset();
+  document.getElementById("reqName").value = name;
+  document.getElementById("reqAmount").value = amount;
+  document.getElementById("recurringModalTitle").innerText = "Convert to Recurring Cost";
+  document.getElementById('recurringModal').classList.add('active');
+}
+
+async function saveRecurringCost(e) {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+
+  await fetch("/api/recurring", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  document.getElementById('recurringModal').classList.remove('active');
+  loadRecurringCosts();
+}
+
+async function deleteRecurringCost(id) {
+  if (confirm("Are you sure you want to stop tracking this recurring overhead?")) {
+    await fetch("/api/recurring/" + id, { method: "DELETE" });
+    loadRecurringCosts();
+  }
+}
+
+
 // Initialization & Polling
 load();
 loadCategories();
+loadRecurringCosts();
 pingPresence();
 setInterval(pingPresence, 2000); // Ping every 2 seconds

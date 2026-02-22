@@ -63,6 +63,16 @@ async function initDb() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS recurring_costs (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        amount DECIMAL(12,2) NOT NULL,
+        billing_cycle VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS categories (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) UNIQUE NOT NULL
@@ -315,6 +325,48 @@ app.post("/api/categories", auth, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to add category" });
+  }
+});
+
+// ---------- RECURRING COSTS ROUTES ----------
+app.get("/api/recurring", auth, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM recurring_costs ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch recurring costs" });
+  }
+});
+
+app.post("/api/recurring", auth, async (req, res) => {
+  const { name, amount, billing_cycle } = req.body;
+
+  if (!name || isNaN(amount) || !billing_cycle) {
+    return res.status(400).json({ error: "Missing or invalid recurring cost data" });
+  }
+
+  const validCycles = ['daily', 'weekly', 'monthly', 'yearly'];
+  if (!validCycles.includes(billing_cycle)) {
+    return res.status(400).json({ error: "Invalid billing cycle" });
+  }
+
+  try {
+    await pool.query(
+      "INSERT INTO recurring_costs (name, amount, billing_cycle) VALUES ($1, $2, $3)",
+      [name, parseFloat(amount), billing_cycle]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add recurring cost" });
+  }
+});
+
+app.delete("/api/recurring/:id", auth, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM recurring_costs WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete recurring cost" });
   }
 });
 
