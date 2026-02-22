@@ -300,8 +300,29 @@ async function deleteRecurringCost(id) {
 
 
 // Initialization & Polling
+let currentVersion = 0;
+
+async function pollData() {
+  await pingPresence(); // Updates last_seen and refreshes the online users UI
+
+  try {
+    const res = await fetch("/api/version");
+    const data = await res.json();
+    if (data.version > currentVersion) {
+      currentVersion = data.version;
+      load();              // Fetch transactions & redraw chart
+      loadRecurringCosts(); // Fetch and redraw recurring widget
+    }
+  } catch (err) {
+    console.error("Polling error:", err);
+  }
+}
+
+// Initial direct loads
 load();
 loadCategories();
 loadRecurringCosts();
-pingPresence();
-setInterval(pingPresence, 2000); // Ping every 2 seconds
+
+// Start 2-second heartbeat
+pollData();
+setInterval(pollData, 2000);

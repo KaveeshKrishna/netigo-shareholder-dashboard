@@ -12,6 +12,8 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL || "postgres://user:pass@host/db", // Ensure you set DATABASE_URL in Vercel
 });
 
+let dataVersion = 1;
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -206,6 +208,7 @@ app.post("/api/add", auth, async (req, res) => {
       ['INSERT', `Added ${type.toUpperCase()} of ₹${amount} for ${category}`, req.user.username]
     );
 
+    dataVersion++;
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to add transaction" });
@@ -259,6 +262,7 @@ app.post("/api/delete/:id", auth, async (req, res) => {
         ['DELETE', `Deleted ${tx.type.toUpperCase()} of ₹${tx.amount} (${tx.category})`, req.user.username]
       );
     }
+    dataVersion++;
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete transaction" });
@@ -284,6 +288,11 @@ app.get("/api/init", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Failed to force database initialization." });
   }
+});
+
+// Real-Time Polling Tracker
+app.get("/api/version", auth, (req, res) => {
+  res.json({ version: dataVersion });
 });
 
 // Fetch all users with online status
@@ -322,6 +331,7 @@ app.post("/api/categories", auth, async (req, res) => {
   const { name } = req.body;
   try {
     await pool.query("INSERT INTO categories (name) VALUES ($1) ON CONFLICT DO NOTHING", [name]);
+    dataVersion++;
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to add category" });
@@ -355,6 +365,7 @@ app.post("/api/recurring", auth, async (req, res) => {
       "INSERT INTO recurring_costs (name, amount, billing_cycle) VALUES ($1, $2, $3)",
       [name, parseFloat(amount), billing_cycle]
     );
+    dataVersion++;
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to add recurring cost" });
@@ -364,6 +375,7 @@ app.post("/api/recurring", auth, async (req, res) => {
 app.delete("/api/recurring/:id", auth, async (req, res) => {
   try {
     await pool.query("DELETE FROM recurring_costs WHERE id = $1", [req.params.id]);
+    dataVersion++;
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete recurring cost" });

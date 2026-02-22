@@ -146,30 +146,38 @@
 
       <!-- NEW: Overall Metrics & Running Costs Widget -->
       <div class="card recent-card" style="display: flex; flex-direction: column;">
-        <div class="card-header" style="justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px;">
+        <div class="card-header"
+          style="justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px;">
           <div>
-            <h3 style="margin-bottom: 5px;">Overall Metrics</h3>
+            <h3 style="margin-bottom: 5px;">Recurring Expenses of the company</h3>
             <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Recurring Running Costs</p>
           </div>
-          <select id="recurringTimeframe" class="btn-secondary" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); font-weight: 500;" onchange="renderRecurringCosts()">
+          <select id="recurringTimeframe" class="btn-secondary"
+            style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); font-weight: 500;"
+            onchange="renderRecurringCosts()">
             <option value="monthly" selected>Monthly Overview</option>
             <option value="weekly">Weekly Overview</option>
             <option value="yearly">Yearly Overview</option>
             <option value="daily">Daily Overview</option>
           </select>
         </div>
-        
-        <div class="stat-info" style="margin-bottom: 20px; padding: 15px; background: rgba(239, 68, 68, 0.05); border-radius: 12px; border-left: 4px solid var(--color-expense);">
-          <p style="color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Projected <span id="projectedLabel">Monthly</span> Overhead</p>
+
+        <div class="stat-info"
+          style="margin-bottom: 20px; padding: 15px; background: rgba(239, 68, 68, 0.05); border-radius: 12px; border-left: 4px solid var(--color-expense);">
+          <p
+            style="color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">
+            Projected <span id="projectedLabel">Monthly</span> Overhead</p>
           <h2 id="projectedTotal" style="color: var(--color-expense); font-size: 28px; margin: 0;">₹0.00</h2>
         </div>
 
         <div style="flex: 1; overflow-y: auto; max-height: 250px; padding-right: 5px;" id="recurringList">
-            <!-- Injected via JS -->
+          <!-- Injected via JS -->
         </div>
 
-        <button class="btn-primary" style="margin-top: 15px; width: 100%; justify-content: center; background: var(--bg-secondary); border: 1px dashed var(--text-muted); color: var(--text-main);" onclick="openAddRecurringModal()">
-            <span style="font-size: 18px; margin-right: 5px;">+</span> Add Custom Recurring Cost
+        <button class="btn-primary"
+          style="margin-top: 15px; width: 100%; justify-content: center; background: var(--bg-secondary); border: 1px dashed var(--text-muted); color: var(--text-main);"
+          onclick="openAddRecurringModal()">
+          <span style="font-size: 18px; margin-right: 5px;">+</span> Add Custom Recurring Cost
         </button>
       </div>
 
@@ -264,7 +272,8 @@
     <div class="modal card">
       <div class="modal-header">
         <h3 id="recurringModalTitle">Add Recurring Cost</h3>
-        <button class="close-modal" onclick="document.getElementById('recurringModal').classList.remove('active')">✕</button>
+        <button class="close-modal"
+          onclick="document.getElementById('recurringModal').classList.remove('active')">✕</button>
       </div>
       <form id="recurringForm" onsubmit="saveRecurringCost(event)">
         <div class="input-group">
