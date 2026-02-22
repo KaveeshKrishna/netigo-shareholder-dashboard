@@ -118,7 +118,8 @@
 
         <section class="grid-stack" id="admin-grid">
             <!-- Audit Logs Section -->
-            <div class="grid-stack-item" gs-x="0" gs-y="0" gs-w="12" gs-h="6" gs-min-w="6" gs-min-h="4">
+            <div class="grid-stack-item" gs-id="audit_log" gs-x="0" gs-y="0" gs-w="12" gs-h="6" gs-min-w="6"
+                gs-min-h="4">
                 <div class="grid-stack-item-content">
                     <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
                         <div class="card-header"
@@ -295,7 +296,7 @@
             // Load saved layout if available
             const savedLayout = localStorage.getItem("netigoAdminGrid");
             if (savedLayout) {
-                grid.load(JSON.parse(savedLayout));
+                grid.load(JSON.parse(savedLayout), true);
             }
 
             // Auto-save on any resize or drag

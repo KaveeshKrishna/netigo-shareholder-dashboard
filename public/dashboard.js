@@ -347,7 +347,7 @@ function initializeGrid() {
   // Load saved layout if available
   const savedLayout = localStorage.getItem("netigoGrid");
   if (savedLayout) {
-    grid.load(JSON.parse(savedLayout));
+    grid.load(JSON.parse(savedLayout), true);
   }
 
   // Auto-save on any resize or drag
