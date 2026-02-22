@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: __dirname + "/.env" });
 const express = require("express");
 const { Pool } = require("pg");
 const bcrypt = require("bcrypt");
