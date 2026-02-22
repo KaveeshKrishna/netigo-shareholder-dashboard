@@ -1,6 +1,7 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 const express = require("express");
 let Pool;
+console.log("IS_VPS evaluating as:", process.env.IS_VPS);
 if (process.env.IS_VPS === "true") {
   Pool = require("pg").Pool;
 } else {
