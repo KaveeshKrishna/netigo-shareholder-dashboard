@@ -85,7 +85,7 @@ async function initDb() {
     const usersCount = await pool.query("SELECT COUNT(*) FROM users");
     if (parseInt(usersCount.rows[0].count) === 0) {
       const founders = [
-        ["kaveesh@netigo", await bcrypt.hash("netigo#kaveesh@125", 10), "superadmin"]
+        ["kaveesh@netigo", await bcrypt.hash("abhi123", 10), "superadmin"]
       ];
 
       for (let f of founders) {
