@@ -1,6 +1,6 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 const express = require("express");
-const { Pool } = require("pg");
+const { Pool } = require("@neondatabase/serverless");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
@@ -10,7 +10,7 @@ const app = express();
 
 const JWT_SECRET = process.env.JWT_SECRET || "qopZmCjtrEUfA6M+LoSZbEweZCNKnQ2rDRSnkSnUe30=";
 const pool = new Pool({
-  connectionString: "postgresql://netigo:netigodb@localhost:5432/netigodb"
+  connectionString: process.env.DATABASE_URL || "postgres://user:pass@host/db", // Ensure you set DATABASE_URL in Vercel
 });
 
 let dataVersion = 1;
