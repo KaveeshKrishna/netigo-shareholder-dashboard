@@ -1,6 +1,11 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 const express = require("express");
-const { Pool } = require("@neondatabase/serverless");
+let Pool;
+if (process.env.IS_VPS === "true") {
+  Pool = require("pg").Pool;
+} else {
+  Pool = require("@neondatabase/serverless").Pool;
+}
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
