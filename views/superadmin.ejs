@@ -78,15 +78,20 @@
             </div>
         </header>
 
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px; gap: 10px;" id="layoutControls">
-            <button class="btn-secondary" id="editLayoutBtn" onclick="toggleEditLayout()"
-                style="background: var(--bg-secondary); border: 1px dashed var(--border-color); color: var(--text-main); font-size: 14px;">Edit
-                Dashboard Layout</button>
-            <button class="btn-primary" id="saveLayoutBtn" onclick="toggleEditLayout()"
-                style="display: none; background: #22c55e; color: #fff; font-size: 14px;">Save Layout</button>
-            <button class="btn-secondary" id="resetLayoutBtn" onclick="resetGrid()"
-                style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--color-expense); color: var(--color-expense); font-size: 14px;">Reset
-                Defaults</button>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 20px; gap: 12px;" id="layoutControls">
+            <button class="btn-edit-layout" id="editLayoutBtn" onclick="toggleEditLayout()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+                Edit Dashboard Layout
+            </button>
+            <button class="btn-save-layout" id="saveLayoutBtn" onclick="toggleEditLayout()" style="display: none;">
+                Save Custom Layout
+            </button>
+            <button class="btn-reset-layout" id="resetLayoutBtn" onclick="resetGrid()" style="display: none;">
+                Reset Default Widgets
+            </button>
         </div>
 
         <section class="grid-stack" id="superadmin-grid">
