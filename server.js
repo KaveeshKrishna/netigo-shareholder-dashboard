@@ -1,5 +1,5 @@
 const express = require("express");
-const { Pool } = require("@neondatabase/serverless");
+const { Pool } = require("pg");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
