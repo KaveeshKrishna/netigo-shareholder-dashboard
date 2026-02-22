@@ -547,9 +547,10 @@ app.delete("/api/admin/delete-user/:id", superAuth, async (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV !== "production") {
-  app.listen(3000, () => {
-    console.log("🚀 Netigo Dashboard running on port 3000");
+if (process.env.NODE_ENV !== "production" || process.env.IS_VPS === "true") {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`🚀 Netigo Dashboard running on port ${port}`);
   });
 }
 
