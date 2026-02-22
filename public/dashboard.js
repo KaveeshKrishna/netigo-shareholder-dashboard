@@ -332,3 +332,72 @@ loadRecurringCosts();
 // Start 2-second heartbeat
 pollData();
 setInterval(pollData, 2000);
+
+// --- GridStack Layout Management ---
+let grid;
+
+function initializeGrid() {
+  grid = GridStack.init({
+    staticGrid: true, // locked by default
+    margin: 15,
+    cellHeight: 100,
+    animate: true
+  });
+
+  // Load saved layout if available
+  const savedLayout = localStorage.getItem("netigoGrid");
+  if (savedLayout) {
+    grid.load(JSON.parse(savedLayout));
+  }
+
+  // Auto-save on any resize or drag
+  grid.on('change', function (event, items) {
+    if (!grid.opts.staticGrid) {
+      saveGrid();
+    }
+  });
+}
+
+function saveGrid() {
+  const layout = grid.save();
+  localStorage.setItem("netigoGrid", JSON.stringify(layout));
+}
+
+let isEditingLayout = false;
+function toggleEditLayout() {
+  isEditingLayout = !isEditingLayout;
+  grid.setStatic(!isEditingLayout); // Unlock or lock grid
+
+  const editBtn = document.getElementById('editLayoutBtn');
+  const saveBtn = document.getElementById('saveLayoutBtn');
+  const resetBtn = document.getElementById('resetLayoutBtn');
+
+  if (isEditingLayout) {
+    // We are currently editing
+    editBtn.style.display = 'none';
+    saveBtn.style.display = 'inline-block';
+    resetBtn.style.display = 'inline-block';
+
+    // Add visual indicator that grid is movable
+    document.getElementById('main-grid').style.backgroundColor = 'rgba(255,255,255,0.02)';
+    document.getElementById('main-grid').style.border = '1px dashed rgba(255,255,255,0.1)';
+    document.getElementById('main-grid').style.borderRadius = '12px';
+  } else {
+    // Finished editing
+    editBtn.style.display = 'inline-block';
+    saveBtn.style.display = 'none';
+    resetBtn.style.display = 'none';
+    document.getElementById('main-grid').style.backgroundColor = 'transparent';
+    document.getElementById('main-grid').style.border = 'none';
+  }
+}
+
+function resetGrid() {
+  if (confirm("Are you sure you want to reset the layout to factory defaults?")) {
+    localStorage.removeItem("netigoGrid");
+    window.location.reload();
+  }
+}
+
+// Boot GridStack
+document.addEventListener("DOMContentLoaded", initializeGrid);

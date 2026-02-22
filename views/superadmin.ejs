@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack-all.js"></script>
 </head>
 
 <body class="dashboard-body">
@@ -76,154 +78,180 @@
             </div>
         </header>
 
-        <section class="content-grid" style="grid-template-columns: 1fr;">
-            <div class="card recent-card">
-                <div class="card-header">
-                    <h3>User Management</h3>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px; gap: 10px;" id="layoutControls">
+            <button class="btn-secondary" id="editLayoutBtn" onclick="toggleEditLayout()"
+                style="background: var(--bg-secondary); border: 1px dashed var(--border-color); color: var(--text-main); font-size: 14px;">Edit
+                Dashboard Layout</button>
+            <button class="btn-primary" id="saveLayoutBtn" onclick="toggleEditLayout()"
+                style="display: none; background: #22c55e; color: #fff; font-size: 14px;">Save Layout</button>
+            <button class="btn-secondary" id="resetLayoutBtn" onclick="resetGrid()"
+                style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--color-expense); color: var(--color-expense); font-size: 14px;">Reset
+                Defaults</button>
+        </div>
+
+        <section class="grid-stack" id="superadmin-grid">
+            <div class="grid-stack-item" gs-x="0" gs-y="0" gs-w="12" gs-h="4">
+                <div class="grid-stack-item-content">
+                    <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
+                        <div class="card-header">
+                            <h3>User Management</h3>
+                        </div>
+                        <div class="table-container" style="flex: 1;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Username</th>
+                                        <th>Role</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% usersList.forEach(u=> { %>
+                                        <tr>
+                                            <td>#<%= u.id %>
+                                            </td>
+                                            <td><strong>
+                                                    <%= u.username %>
+                                                </strong></td>
+                                            <td>
+                                                <span
+                                                    class="badge badge-<%= u.role === 'superadmin' ? 'investment' : 'income' %>">
+                                                    <%= u.role %>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style="display:flex; gap:10px;">
+                                                    <button class="btn-primary"
+                                                        style="padding: 6px 12px; font-size: 12px;"
+                                                        onclick="openPasswordModal('<%= u.id %>', '<%= u.username %>')">Change
+                                                        Password</button>
+                                                    <% if (u.id !==user.id) { %>
+                                                        <button class="btn-icon-danger"
+                                                            onclick="deleteUser('<%= u.id %>')">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                                stroke="currentColor" stroke-width="2">
+                                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                                <path
+                                                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                        <% } %>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <% }); %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Username</th>
-                                <th>Role</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% usersList.forEach(u=> { %>
-                                <tr>
-                                    <td>#<%= u.id %>
-                                    </td>
-                                    <td><strong>
-                                            <%= u.username %>
-                                        </strong></td>
-                                    <td>
-                                        <span
-                                            class="badge badge-<%= u.role === 'superadmin' ? 'investment' : 'income' %>">
-                                            <%= u.role %>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style="display:flex; gap:10px;">
-                                            <button class="btn-primary" style="padding: 6px 12px; font-size: 12px;"
-                                                onclick="openPasswordModal('<%= u.id %>', '<%= u.username %>')">Change
-                                                Password</button>
-                                            <% if (u.id !==user.id) { %>
-                                                <button class="btn-icon-danger" onclick="deleteUser('<%= u.id %>')">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                        stroke="currentColor" stroke-width="2">
-                                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                                        <path
-                                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                                        </path>
-                                                    </svg>
-                                                </button>
-                                                <% } %>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <% }); %>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
             </div>
 
             <!-- Audit Management Section -->
             <% if (pendingDeletions> 0) { %>
-                <div class="card"
-                    style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--color-expense); margin-bottom: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <h4 style="color: var(--color-expense); margin-bottom: 5px;">Action Required: Old Logs
-                                Detected</h4>
-                            <p style="font-size: 14px; margin: 0;">There are <strong>
-                                    <%= pendingDeletions %>
-                                </strong> audit logs older than 30 days consuming database space.</p>
+                <div class="grid-stack-item" gs-x="0" gs-y="4" gs-w="12" gs-h="2">
+                    <div class="grid-stack-item-content">
+                        <div class="card"
+                            style="height: 100%; display: flex; flex-direction: column; background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--color-expense); margin-bottom: 20px;">
+                            <div style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4 style="color: var(--color-expense); margin-bottom: 5px;">Action Required: Old
+                                        Logs
+                                        Detected</h4>
+                                    <p style="font-size: 14px; margin: 0;">There are <strong>
+                                            <%= pendingDeletions %>
+                                        </strong> audit logs older than 30 days consuming database space.</p>
+                                </div>
+                                <button class="btn-primary" style="background: var(--color-expense);"
+                                    onclick="deleteOldLogs()">Clear Old Logs</button>
+                            </div>
                         </div>
-                        <button class="btn-primary" style="background: var(--color-expense);"
-                            onclick="deleteOldLogs()">Clear Old Logs</button>
                     </div>
                 </div>
                 <% } %>
 
-                    <div class="card recent-card">
-                        <div class="card-header"
-                            style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3>Audit Trail Management</h3>
-                            <div style="display:flex; gap:10px;">
-                                <a href="/api/audit/export" class="btn-primary"
-                                    style="background: var(--color-investment); text-decoration: none; padding: 6px 12px; font-size: 13px;">Export
-                                    CSV</a>
-                                <button class="btn-primary"
-                                    style="background: var(--color-expense); padding: 6px 12px; font-size: 13px;"
-                                    onclick="deleteAllLogs()">Nuke All Logs</button>
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date & Time</th>
-                                        <th>Action</th>
-                                        <th>Details</th>
-                                        <th>User</th>
-                                        <th>Manage</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="auditTableBody">
-                                    <% auditLogs.forEach(log=> { %>
-                                        <tr>
-                                            <td>
-                                                <%= new Date(log.created_at).toLocaleString() %>
-                                            </td>
-                                            <td>
-                                                <span
-                                                    class="badge badge-<%= log.action === 'INSERT' ? 'investment' : 'expense' %>">
-                                                    <%= log.action %>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <%= log.details %>
-                                            </td>
-                                            <td><strong>
-                                                    <%= log.performed_by %>
-                                                </strong></td>
-                                            <td>
-                                                <button class="btn-icon-danger"
-                                                    onclick="deleteSingleLog('<%= log.id %>')">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                        stroke="currentColor" stroke-width="2">
-                                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                                        <path
-                                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                                        </path>
-                                                    </svg>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <% }); %>
-                                            <% if (auditLogs.length===0) { %>
+                    <div class="grid-stack-item" gs-x="0"
+                        gs-y="<% if (pendingDeletions > 0) { %>6<% } else { %>4<% } %>" gs-w="12" gs-h="6">
+                        <div class="grid-stack-item-content">
+                            <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
+                                <div class="card-header"
+                                    style="display: flex; justify-content: space-between; align-items: center;">
+                                    <h3>Audit Trail Management</h3>
+                                    <div style="display:flex; gap:10px;">
+                                        <a href="/api/audit/export" class="btn-primary"
+                                            style="background: var(--color-investment); text-decoration: none; padding: 6px 12px; font-size: 13px;">Export
+                                            CSV</a>
+                                        <button class="btn-primary"
+                                            style="background: var(--color-expense); padding: 6px 12px; font-size: 13px;"
+                                            onclick="deleteAllLogs()">Nuke All Logs</button>
+                                    </div>
+                                </div>
+                                <div class="table-container" style="flex: 1;">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Date & Time</th>
+                                                <th>Action</th>
+                                                <th>Details</th>
+                                                <th>User</th>
+                                                <th>Manage</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="auditTableBody">
+                                            <% auditLogs.forEach(log=> { %>
                                                 <tr>
-                                                    <td colspan="5"
-                                                        style="text-align: center; color: var(--text-muted);">No audit
-                                                        logs available.</td>
+                                                    <td>
+                                                        <%= new Date(log.created_at).toLocaleString() %>
+                                                    </td>
+                                                    <td>
+                                                        <span
+                                                            class="badge badge-<%= log.action === 'INSERT' ? 'investment' : 'expense' %>">
+                                                            <%= log.action %>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <%= log.details %>
+                                                    </td>
+                                                    <td><strong>
+                                                            <%= log.performed_by %>
+                                                        </strong></td>
+                                                    <td>
+                                                        <button class="btn-icon-danger"
+                                                            onclick="deleteSingleLog('<%= log.id %>')">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                                stroke="currentColor" stroke-width="2">
+                                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                                <path
+                                                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                    </td>
                                                 </tr>
-                                                <% } %>
-                                </tbody>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="pagination-controls"
-                            style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-top: 1px solid var(--border-color);">
-                            <button id="prevAuditBtn" class="btn-secondary" onclick="changeAuditPage(-1)"
-                                disabled>Previous</button>
-                            <span id="auditPageInfo" style="font-size: 14px; font-weight: 500;">Page 1</span>
-                            <button id="nextAuditBtn" class="btn-secondary" onclick="changeAuditPage(1)">Next</button>
-                        </div>
-                    </div>
+                                                <% }); %>
+                                                    <% if (auditLogs.length===0) { %>
+                                                        <tr>
+                                                            <td colspan="5"
+                                                                style="text-align: center; color: var(--text-muted);">No
+                                                                audit
+                                                                logs available.</td>
+                                                        </tr>
+                                                        <% } %>
+                                        </tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="pagination-controls"
+                                    style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-top: 1px solid var(--border-color);">
+                                    <button id="prevAuditBtn" class="btn-secondary" onclick="changeAuditPage(-1)"
+                                        disabled>Previous</button>
+                                    <span id="auditPageInfo" style="font-size: 14px; font-weight: 500;">Page 1</span>
+                                    <button id="nextAuditBtn" class="btn-secondary"
+                                        onclick="changeAuditPage(1)">Next</button>
+                                </div>
+                            </div>
         </section>
     </main>
 
@@ -426,7 +454,67 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             displayAuditPage(1);
+
+            // --- GridStack Layout Management ---
+            grid = GridStack.init({
+                staticGrid: true, // locked by default
+                margin: 15,
+                cellHeight: 100,
+                animate: true
+            });
+
+            // Load saved layout if available
+            const savedLayout = localStorage.getItem("netigoSuperadminGrid");
+            if (savedLayout) {
+                grid.load(JSON.parse(savedLayout));
+            }
+
+            // Auto-save on any resize or drag
+            grid.on('change', function (event, items) {
+                if (!grid.opts.staticGrid) {
+                    saveGrid();
+                }
+            });
         });
+
+        let grid;
+        function saveGrid() {
+            const layout = grid.save();
+            localStorage.setItem("netigoSuperadminGrid", JSON.stringify(layout));
+        }
+
+        let isEditingLayout = false;
+        function toggleEditLayout() {
+            isEditingLayout = !isEditingLayout;
+            grid.setStatic(!isEditingLayout); // Unlock or lock grid
+
+            const editBtn = document.getElementById('editLayoutBtn');
+            const saveBtn = document.getElementById('saveLayoutBtn');
+            const resetBtn = document.getElementById('resetLayoutBtn');
+
+            if (isEditingLayout) {
+                editBtn.style.display = 'none';
+                saveBtn.style.display = 'inline-block';
+                resetBtn.style.display = 'inline-block';
+
+                document.getElementById('superadmin-grid').style.backgroundColor = 'rgba(255,255,255,0.02)';
+                document.getElementById('superadmin-grid').style.border = '1px dashed rgba(255,255,255,0.1)';
+                document.getElementById('superadmin-grid').style.borderRadius = '12px';
+            } else {
+                editBtn.style.display = 'inline-block';
+                saveBtn.style.display = 'none';
+                resetBtn.style.display = 'none';
+                document.getElementById('superadmin-grid').style.backgroundColor = 'transparent';
+                document.getElementById('superadmin-grid').style.border = 'none';
+            }
+        }
+
+        function resetGrid() {
+            if (confirm("Are you sure you want to reset the layout to factory defaults?")) {
+                localStorage.removeItem("netigoSuperadminGrid");
+                window.location.reload();
+            }
+        }
     </script>
 
 </body>
