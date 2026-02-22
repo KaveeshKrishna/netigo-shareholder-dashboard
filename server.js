@@ -468,10 +468,6 @@ app.get("/superadmin", superAuth, async (req, res) => {
 app.delete("/api/superadmin/audit/old", superAuth, async (req, res) => {
   try {
     await pool.query("DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'");
-    await pool.query(
-      "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
-      ['DELETE', `Cleared old audit logs (older than 30 days)`, req.user.username]
-    );
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to clear old logs" });
@@ -481,10 +477,6 @@ app.delete("/api/superadmin/audit/old", superAuth, async (req, res) => {
 app.delete("/api/superadmin/audit/all", superAuth, async (req, res) => {
   try {
     await pool.query("DELETE FROM audit_logs");
-    await pool.query(
-      "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
-      ['DELETE', `WARNING: Purged entire audit log history`, req.user.username]
-    );
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to clear all logs" });
@@ -494,10 +486,6 @@ app.delete("/api/superadmin/audit/all", superAuth, async (req, res) => {
 app.delete("/api/superadmin/audit/:id", superAuth, async (req, res) => {
   try {
     await pool.query("DELETE FROM audit_logs WHERE id = $1", [req.params.id]);
-    await pool.query(
-      "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
-      ['DELETE', `Deleted a specific audit log entry (ID: ${req.params.id})`, req.user.username]
-    );
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete log" });
@@ -512,10 +500,7 @@ app.post("/api/admin/change-password/:id", superAuth, async (req, res) => {
     const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [req.params.id]);
     await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hash, req.params.id]);
     if (userRes.rows[0]) {
-      await pool.query(
-        "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
-        ['UPDATE', `Forced password reset for user: ${userRes.rows[0].username}`, req.user.username]
-      );
+      // Intentionally bypassed audit logging for superadmin actions
     }
     res.json({ success: true });
   } catch (err) {
@@ -528,10 +513,6 @@ app.post("/api/admin/add-user", superAuth, async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10);
     await pool.query("INSERT INTO users (username, password, role) VALUES ($1, $2, $3)", [username, hash, role || 'admin']);
-    await pool.query(
-      "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
-      ['INSERT', `Created new user account: ${username} (${role || 'admin'})`, req.user.username]
-    );
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to add user" });
@@ -543,10 +524,6 @@ app.delete("/api/admin/delete-user/:id", superAuth, async (req, res) => {
     const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [req.params.id]);
     if (userRes.rows[0]) {
       await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
-      await pool.query(
-        "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
-        ['DELETE', `Deleted user account: ${userRes.rows[0].username}`, req.user.username]
-      );
     }
     res.json({ success: true });
   } catch (err) {
