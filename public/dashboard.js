@@ -14,9 +14,10 @@ async function load() {
   table.innerHTML = "";
 
   data.forEach(t => {
-    if (t.type === "income") income += t.amount;
-    else if (t.type === "expense") expense += t.amount;
-    else if (t.type === "investment") investment += t.amount;
+    const amt = parseFloat(t.amount) || 0;
+    if (t.type === "income") income += amt;
+    else if (t.type === "expense") expense += amt;
+    else if (t.type === "investment") investment += amt;
 
     table.innerHTML += `
       <tr>
