@@ -8,7 +8,7 @@ const path = require("path");
 
 const app = express();
 
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-netigo-key";
+const JWT_SECRET = process.env.JWT_SECRET || "qopZmCjtrEUfA6M+LoSZbEweZCNKnQ2rDRSnkSnUe30=";
 const pool = new Pool({
   connectionString: "postgresql://netigo:netigodb@localhost:5432/netigodb"
 });
