@@ -205,10 +205,22 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
     chartLabels = enriched.map(i => i.name);
     chartData = enriched.map(i => i.ownership_pct);
     chartColors = colors.slice(0, enriched.length);
+    const totalOwn = chartData.reduce((a, b) => a + b, 0);
+    if (totalOwn < 100) {
+      chartLabels.push('Unassigned');
+      chartData.push(Math.round((100 - totalOwn) * 100) / 100);
+      chartColors.push('#334155');
+    }
   } else if (investorChartMode === 'profit') {
     chartLabels = enriched.map(i => i.name);
     chartData = enriched.map(i => i.profit_share_pct);
     chartColors = colors.slice(0, enriched.length);
+    const totalProfit = chartData.reduce((a, b) => a + b, 0);
+    if (totalProfit < 100) {
+      chartLabels.push('Unassigned');
+      chartData.push(Math.round((100 - totalProfit) * 100) / 100);
+      chartColors.push('#334155');
+    }
   }
 
   if (chartData.some(v => v > 0)) {
@@ -521,7 +533,7 @@ async function confirmDeleteInvestor(id) {
 
 // Independent Revenue Timeline loader
 async function loadRevenueTimeline() {
-  const period = document.getElementById('timelinePeriod')?.value || 'monthly';
+  const period = document.getElementById('timelinePeriod')?.value || 'weekly';
   const from = document.getElementById('timelineFrom')?.value || '';
   const to = document.getElementById('timelineTo')?.value || '';
   let url = `/api/finance/summary?period=${period}`;
@@ -537,7 +549,7 @@ async function loadRevenueTimeline() {
 
 // Independent Profit Trend loader
 async function loadProfitTrend() {
-  const period = document.getElementById('profitPeriod')?.value || 'monthly';
+  const period = document.getElementById('profitPeriod')?.value || 'weekly';
   const from = document.getElementById('profitFrom')?.value || '';
   const to = document.getElementById('profitTo')?.value || '';
   let url = `/api/finance/summary?period=${period}`;
@@ -970,6 +982,19 @@ load();
 loadCategories();
 loadRecurringCosts();
 loadFinanceSummary();
+
+// Set default date range to current month for line graphs
+(function initChartDateDefaults() {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const fmt = d => d.toISOString().split('T')[0];
+  const profitFrom = document.getElementById('profitFrom');
+  const profitTo = document.getElementById('profitTo');
+  if (profitFrom) profitFrom.value = fmt(firstDay);
+  if (profitTo) profitTo.value = fmt(lastDay);
+})();
+
 loadRevenueTimeline();
 loadProfitTrend();
 
