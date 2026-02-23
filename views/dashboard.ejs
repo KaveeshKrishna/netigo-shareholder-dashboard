@@ -246,16 +246,15 @@
       </div>
 
       <!-- Notes / Todo Widget -->
-      <div class="grid-stack-item" gs-id="notes" gs-x="8" gs-y="5" gs-w="4" gs-h="4" gs-min-w="3" gs-min-h="4">
+      <div class="grid-stack-item" gs-id="notes" gs-x="8" gs-y="5" gs-w="4" gs-h="4" gs-min-w="3" gs-min-h="4"
+        style="position:relative;">
+        <button id="addNoteTileBtn" onclick="showAddTileMenu()" title="Add separate tile"
+          style="display:none;align-items:center;justify-content:center;width:36px;height:36px;background:var(--color-income);border:2px solid var(--bg-card);color:#fff;border-radius:50%;font-size:22px;cursor:pointer;line-height:1;transition:all 0.2s;position:absolute;top:-12px;left:-12px;z-index:20;box-shadow:0 4px 12px rgba(16,185,129,0.4);">+</button>
         <div class="grid-stack-item-content">
           <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
             <div class="card-header"
               style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--border-light); padding-bottom: 15px; margin-bottom: 15px; gap: 12px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; position: relative;">
-                <h3 style="margin: 0;">Team Notes &amp; Tasks</h3>
-                <button id="addNoteTileBtn" onclick="showAddTileMenu()" title="Add separate tile"
-                  style="display:none;align-items:center;justify-content:center;width:28px;height:28px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:var(--color-income);border-radius:8px;font-size:18px;cursor:pointer;line-height:1;transition:all 0.2s;">+</button>
-              </div>
+              <h3 style="margin: 0;">Team Notes &amp; Tasks</h3>
               <select id="notesViewSelect" class="btn-secondary" onchange="switchNotesTab(this.value)"
                 style="width: 100%; padding: 8px 12px; font-size: 14px; border-radius: 8px; font-family: inherit;">
                 <option value="global">Global Tasks</option>

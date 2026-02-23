@@ -807,7 +807,8 @@ function createSplitTileWidget(category) {
 
   grid.addWidget({
     id: gsId,
-    x: 0, y: 50, w: 4, h: 4, minW: 3, minH: 4,
+    w: 4, h: 4, minW: 3, minH: 4,
+    autoPosition: true,
     content: widgetHtml
   });
 
@@ -848,13 +849,16 @@ function showAddTileMenu() {
   const existing = document.getElementById('addTileMenu');
   if (existing) { existing.remove(); return; }
 
+  // Max 2 splits allowed (keep at least 1 in stacked tile)
+  if (splitTiles.length >= 2) return;
+
   const available = ['global', 'personal', 'completed'].filter(t => !splitTiles.includes(t));
-  if (available.length === 0) return;
+  if (available.length <= 1) return; // need at least 1 remaining in stacked
 
   const titles = { personal: 'Personal Tasks', global: 'Global Tasks', completed: 'Completed Archive' };
   const menu = document.createElement('div');
   menu.id = 'addTileMenu';
-  menu.style.cssText = 'position:absolute;top:40px;left:0;background:var(--bg-card);border:1px solid var(--border-light);border-radius:10px;padding:6px;z-index:100;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.3);';
+  menu.style.cssText = 'position:absolute;top:30px;left:0;background:var(--bg-card);border:1px solid var(--border-light);border-radius:10px;padding:6px;z-index:100;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.3);';
 
   available.forEach(cat => {
     const btn = document.createElement('button');
@@ -867,7 +871,10 @@ function showAddTileMenu() {
   });
 
   const addBtn = document.getElementById('addNoteTileBtn');
-  if (addBtn) addBtn.parentElement.appendChild(menu);
+  if (addBtn) {
+    addBtn.parentElement.style.position = 'relative';
+    addBtn.parentElement.appendChild(menu);
+  }
 
   // Close on outside click
   setTimeout(() => {
@@ -883,7 +890,8 @@ function showAddTileMenu() {
 function updateAddTileButton() {
   const btn = document.getElementById('addNoteTileBtn');
   if (!btn) return;
-  btn.style.display = isEditingLayout ? 'flex' : 'none';
+  // Show + only in edit mode AND only if fewer than 2 tiles split
+  btn.style.display = (isEditingLayout && splitTiles.length < 2) ? 'flex' : 'none';
 
   // Show/hide delete buttons on split tiles
   document.querySelectorAll('.split-tile-delete-btn').forEach(b => {
