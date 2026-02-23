@@ -442,7 +442,7 @@ app.get("/api/online", auth, async (req, res) => {
         role, 
         last_seen,
         CASE 
-          WHEN last_seen >= NOW() - INTERVAL '5 minutes' THEN true 
+          WHEN last_seen >= NOW() - INTERVAL '10 seconds' THEN true 
           ELSE false 
         END as is_online
       FROM users 
