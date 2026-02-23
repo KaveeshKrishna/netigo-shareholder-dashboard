@@ -298,6 +298,13 @@ function openAddInvestorModal() {
   const existing = document.getElementById('investorModal');
   if (existing) existing.remove();
 
+  // Build dropdown options from existing investors
+  const currentInvestors = (window._investorData?.enriched || []);
+  let optionsHtml = '<option value="">Select Investor</option>';
+  currentInvestors.forEach(inv => {
+    optionsHtml += `<option value="${inv.name}">${inv.name}</option>`;
+  });
+
   const overlay = document.createElement('div');
   overlay.id = 'investorModal';
   overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;';
@@ -309,7 +316,15 @@ function openAddInvestorModal() {
       <div style="display:flex;flex-direction:column;gap:14px;">
         <div>
           <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Investor Name</label>
-          <input type="text" id="modalInvName" placeholder="Enter name" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+          <div style="display:flex;gap:8px;">
+            <select id="modalInvSelect" style="flex:1;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;cursor:pointer;">
+              ${optionsHtml}
+            </select>
+            <button type="button" onclick="toggleNewInvestorInput()" class="btn-secondary" style="padding:10px 14px;border-radius:8px;font-size:13px;white-space:nowrap;font-family:Outfit;">+ New</button>
+          </div>
+          <div id="newInvestorInputWrap" style="display:none;margin-top:8px;">
+            <input type="text" id="modalInvNewName" placeholder="Enter new investor name" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+          </div>
         </div>
         <div style="display:flex;gap:12px;">
           <div style="flex:1;">
@@ -329,12 +344,29 @@ function openAddInvestorModal() {
     </div>
   `;
   document.body.appendChild(overlay);
-  document.getElementById('modalInvName').focus();
+}
+
+function toggleNewInvestorInput() {
+  const wrap = document.getElementById('newInvestorInputWrap');
+  const select = document.getElementById('modalInvSelect');
+  if (wrap.style.display === 'none') {
+    wrap.style.display = 'block';
+    select.disabled = true;
+    select.style.opacity = '0.4';
+    document.getElementById('modalInvNewName').focus();
+  } else {
+    wrap.style.display = 'none';
+    select.disabled = false;
+    select.style.opacity = '1';
+    document.getElementById('modalInvNewName').value = '';
+  }
 }
 
 async function submitAddInvestor() {
-  const name = document.getElementById('modalInvName').value.trim();
-  if (!name) return alert('Please enter a name');
+  const newNameInput = document.getElementById('modalInvNewName');
+  const select = document.getElementById('modalInvSelect');
+  const name = (newNameInput && newNameInput.value.trim()) || select.value;
+  if (!name) return alert('Please select or enter an investor name');
   const own = document.getElementById('modalInvOwn').value;
   const profit = document.getElementById('modalInvProfit').value;
   await fetch('/api/investors', {
