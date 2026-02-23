@@ -209,11 +209,6 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
     chartLabels = enriched.map(i => i.name);
     chartData = enriched.map(i => i.profit_share_pct);
     chartColors = colors.slice(0, enriched.length);
-    if (companySavingsPct > 0) {
-      chartLabels.push('Company');
-      chartData.push(companySavingsPct);
-      chartColors.push('#64748b');
-    }
   }
 
   if (chartData.some(v => v > 0)) {
