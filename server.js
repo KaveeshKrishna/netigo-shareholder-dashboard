@@ -119,6 +119,19 @@ async function initDb() {
       )
     `);
 
+    // Add manual ownership & profit share columns
+    await pool.query(`ALTER TABLE investors ADD COLUMN IF NOT EXISTS ownership_pct DECIMAL(5,2) DEFAULT 0`);
+    await pool.query(`ALTER TABLE investors ADD COLUMN IF NOT EXISTS profit_share_pct DECIMAL(5,2) DEFAULT 0`);
+
+    // App settings (for company savings %)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key VARCHAR(255) PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    `);
+    await pool.query(`INSERT INTO app_settings (key, value) VALUES ('company_savings_pct', '0') ON CONFLICT DO NOTHING`);
+
     await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS investor_name VARCHAR(255)`);
 
     // Auto-create founders
@@ -483,21 +496,84 @@ app.post("/api/categories", auth, async (req, res) => {
 // ---------- INVESTORS ROUTES ----------
 app.get("/api/investors", auth, async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM investors ORDER BY name ASC");
-    res.json(result.rows);
+    // Join with transactions to get total invested per investor
+    const result = await pool.query(`
+      SELECT i.id, i.name, i.ownership_pct, i.profit_share_pct,
+        COALESCE(t.total_invested, 0) as invested
+      FROM investors i
+      LEFT JOIN (
+        SELECT investor_name, SUM(amount) as total_invested
+        FROM transactions WHERE type = 'investment' AND investor_name IS NOT NULL
+        GROUP BY investor_name
+      ) t ON t.investor_name = i.name
+      ORDER BY i.name ASC
+    `);
+    // Also return company savings %
+    const settingsRes = await pool.query("SELECT value FROM app_settings WHERE key = 'company_savings_pct'");
+    const companySavingsPct = parseFloat(settingsRes.rows[0]?.value || '0');
+    res.json({ investors: result.rows, companySavingsPct });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch investors" });
   }
 });
 
 app.post("/api/investors", auth, async (req, res) => {
-  const { name } = req.body;
+  const { name, ownership_pct, profit_share_pct } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: "Name required" });
   try {
-    await pool.query("INSERT INTO investors (name) VALUES ($1) ON CONFLICT DO NOTHING", [name.trim()]);
+    await pool.query(
+      "INSERT INTO investors (name, ownership_pct, profit_share_pct) VALUES ($1, $2, $3) ON CONFLICT (name) DO UPDATE SET ownership_pct = $2, profit_share_pct = $3",
+      [name.trim(), parseFloat(ownership_pct) || 0, parseFloat(profit_share_pct) || 0]
+    );
+    dataVersion++;
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to add investor" });
+  }
+});
+
+app.put("/api/investors/:id", auth, async (req, res) => {
+  const { ownership_pct, profit_share_pct } = req.body;
+  try {
+    await pool.query(
+      "UPDATE investors SET ownership_pct = $1, profit_share_pct = $2 WHERE id = $3",
+      [parseFloat(ownership_pct) || 0, parseFloat(profit_share_pct) || 0, req.params.id]
+    );
+    dataVersion++;
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update investor" });
+  }
+});
+
+app.delete("/api/investors/:id", auth, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM investors WHERE id = $1", [req.params.id]);
+    dataVersion++;
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete investor" });
+  }
+});
+
+// Company Savings Settings
+app.get("/api/settings/company-savings", auth, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT value FROM app_settings WHERE key = 'company_savings_pct'");
+    res.json({ companySavingsPct: parseFloat(result.rows[0]?.value || '0') });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch settings" });
+  }
+});
+
+app.put("/api/settings/company-savings", auth, async (req, res) => {
+  const { pct } = req.body;
+  try {
+    await pool.query("INSERT INTO app_settings (key, value) VALUES ('company_savings_pct', $1) ON CONFLICT (key) DO UPDATE SET value = $1", [String(parseFloat(pct) || 0)]);
+    dataVersion++;
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update settings" });
   }
 });
 

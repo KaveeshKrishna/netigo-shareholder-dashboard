@@ -118,7 +118,8 @@ document.getElementById("newCategoryBtn").onclick = async () => {
 // 1.5 Investors
 async function loadInvestors() {
   const res = await fetch("/api/investors");
-  const investors = await res.json();
+  const data = await res.json();
+  const investors = data.investors || [];
   const select = document.getElementById("investorSelect");
   if (!select) return;
   select.innerHTML = '<option value="">Select Investor</option>';
@@ -152,14 +153,181 @@ let revenueChartInstance, investorChartInstance, profitChartInstance;
 // Stats + Investor widget (no chart, just numbers)
 async function loadFinanceSummary() {
   try {
-    const res = await fetch('/api/finance/summary?period=all');
-    const data = await res.json();
-    document.getElementById('netProfit').innerText = formatMoney(data.netProfit);
-    document.getElementById('companyValuation').innerText = formatMoney(data.companyValuation);
-    renderInvestorWidget(data.investors, data.companyValuation);
+    const [finRes, invRes] = await Promise.all([
+      fetch('/api/finance/summary?period=all'),
+      fetch('/api/investors')
+    ]);
+    const finData = await finRes.json();
+    const invData = await invRes.json();
+    document.getElementById('netProfit').innerText = formatMoney(finData.netProfit);
+    document.getElementById('companyValuation').innerText = formatMoney(finData.companyValuation);
+    renderInvestorWidget(invData.investors || [], finData.companyValuation, finData.netProfit, invData.companySavingsPct || 0);
   } catch (err) {
     console.error('Finance summary error:', err);
   }
+}
+
+function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct) {
+  const ctx = document.getElementById('investorChart');
+  const list = document.getElementById('investorList');
+  if (!ctx || !list) return;
+  if (investorChartInstance) investorChartInstance.destroy();
+
+  const colors = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#6366f1'];
+
+  // Profit distribution calculation
+  const companySavingsAmt = netProfit * (companySavingsPct / 100);
+  const distributableProfit = netProfit - companySavingsAmt;
+
+  // Build investor rows with calculated profit amounts
+  const enriched = investors.map(inv => ({
+    ...inv,
+    invested: parseFloat(inv.invested) || 0,
+    ownership_pct: parseFloat(inv.ownership_pct) || 0,
+    profit_share_pct: parseFloat(inv.profit_share_pct) || 0,
+    profitAmount: distributableProfit * ((parseFloat(inv.profit_share_pct) || 0) / 100)
+  }));
+
+  // Doughnut chart data — ownership %
+  const chartLabels = enriched.map(i => i.name);
+  const chartData = enriched.map(i => i.ownership_pct);
+  if (companySavingsPct > 0) {
+    chartLabels.push('Company');
+    chartData.push(companySavingsPct);
+  }
+
+  if (chartData.some(v => v > 0)) {
+    investorChartInstance = new Chart(ctx.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: chartLabels,
+        datasets: [{ data: chartData, backgroundColor: [...colors.slice(0, enriched.length), '#64748b'], borderWidth: 0, hoverOffset: 8 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '70%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', padding: 10, cornerRadius: 8, callbacks: { label: c => ' ' + c.label + ': ' + c.raw + '%' } }
+        }
+      }
+    });
+  }
+
+  // Build the HTML
+  let html = '';
+
+  // Company Savings row
+  html += `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(100,116,139,0.1);border-radius:10px;margin-bottom:10px;border:1px dashed var(--border-light);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:#64748b;flex-shrink:0;"></div>
+        <div>
+          <p style="margin:0;font-weight:600;font-size:14px;color:var(--text-main);">💰 Company Savings</p>
+          <p style="margin:0;font-size:11px;color:var(--text-muted);">Reserved from net profit</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input type="number" value="${companySavingsPct}" min="0" max="100" step="0.5"
+          style="width:60px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:4px 6px;font-size:13px;text-align:right;font-family:Outfit;"
+          onchange="updateCompanySavings(this.value)" />
+        <span style="color:var(--text-muted);font-size:12px;">%</span>
+        <span style="font-weight:600;font-size:13px;color:#64748b;min-width:80px;text-align:right;">${formatMoney(companySavingsAmt)}</span>
+      </div>
+    </div>
+  `;
+
+  // Investor rows
+  enriched.forEach((inv, i) => {
+    html += `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border-light);gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+          <div style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]};flex-shrink:0;"></div>
+          <div style="min-width:0;">
+            <p style="margin:0;font-weight:600;font-size:14px;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inv.name}</p>
+            <p style="margin:0;font-size:11px;color:var(--color-investment);">Invested: ${formatMoney(inv.invested)}</p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <div style="text-align:center;">
+            <span style="font-size:9px;color:var(--text-muted);display:block;">Own%</span>
+            <input type="number" value="${inv.ownership_pct}" min="0" max="100" step="0.5"
+              style="width:50px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:5px;color:var(--text-main);padding:3px 4px;font-size:12px;text-align:center;font-family:Outfit;"
+              onchange="updateInvestorPct(${inv.id}, this.parentElement.parentElement)" data-field="ownership" />
+          </div>
+          <div style="text-align:center;">
+            <span style="font-size:9px;color:var(--text-muted);display:block;">Profit%</span>
+            <input type="number" value="${inv.profit_share_pct}" min="0" max="100" step="0.5"
+              style="width:50px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:5px;color:var(--text-main);padding:3px 4px;font-size:12px;text-align:center;font-family:Outfit;"
+              onchange="updateInvestorPct(${inv.id}, this.parentElement.parentElement)" data-field="profit" />
+          </div>
+          <div style="text-align:right;min-width:75px;">
+            <span style="font-size:9px;color:var(--text-muted);display:block;">Earnings</span>
+            <span style="font-weight:600;font-size:12px;color:${inv.profitAmount >= 0 ? 'var(--color-income)' : 'var(--color-expense)'};">${formatMoney(inv.profitAmount)}</span>
+          </div>
+          <button onclick="deleteInvestor(${inv.id})" style="background:none;border:none;color:var(--color-expense);cursor:pointer;padding:4px;opacity:0.6;" title="Remove Investor">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  // Add investor form
+  html += `
+    <div style="padding:12px;border-top:1px solid var(--border-light);margin-top:4px;">
+      <div id="addInvestorForm" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <input type="text" id="newInvName" placeholder="Name" style="flex:1;min-width:80px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:6px 8px;font-size:12px;font-family:Outfit;" />
+        <input type="number" id="newInvOwn" placeholder="Own%" value="0" min="0" max="100" step="0.5" style="width:55px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:6px 4px;font-size:12px;text-align:center;font-family:Outfit;" />
+        <input type="number" id="newInvProfit" placeholder="Profit%" value="0" min="0" max="100" step="0.5" style="width:55px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:6px 4px;font-size:12px;text-align:center;font-family:Outfit;" />
+        <button onclick="addInvestorFromWidget()" style="background:var(--color-income);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600;font-family:Outfit;">+ Add</button>
+      </div>
+    </div>
+  `;
+
+  list.innerHTML = html;
+}
+
+// Investor widget actions
+async function updateInvestorPct(id, container) {
+  const inputs = container.querySelectorAll('input[type="number"]');
+  const ownership = inputs[0].value;
+  const profit = inputs[1].value;
+  await fetch(`/api/investors/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ownership_pct: ownership, profit_share_pct: profit })
+  });
+  loadFinanceSummary();
+}
+
+async function updateCompanySavings(val) {
+  await fetch('/api/settings/company-savings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pct: val })
+  });
+  loadFinanceSummary();
+}
+
+async function addInvestorFromWidget() {
+  const name = document.getElementById('newInvName').value.trim();
+  if (!name) return alert('Please enter a name');
+  const own = document.getElementById('newInvOwn').value;
+  const profit = document.getElementById('newInvProfit').value;
+  await fetch('/api/investors', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, ownership_pct: own, profit_share_pct: profit })
+  });
+  loadFinanceSummary();
+  loadInvestors(); // Refresh the transaction form dropdown too
+}
+
+async function deleteInvestor(id) {
+  if (!confirm('Remove this investor?')) return;
+  await fetch(`/api/investors/${id}`, { method: 'DELETE' });
+  loadFinanceSummary();
+  loadInvestors();
 }
 
 // Independent Revenue Timeline loader
