@@ -19,20 +19,27 @@ async function load() {
     else if (t.type === "expense") expense += amt;
     else if (t.type === "investment") investment += amt;
 
+    const investorLabel = (t.type === 'investment' && t.investor_name) ? `<br><small style="color:var(--color-investment);font-weight:500;">by ${t.investor_name}</small>` : '';
+    const noteText = t.note || '';
+    const truncatedNote = noteText.length > 40 ? noteText.substring(0, 40) + '…' : noteText;
+    const safeNote = JSON.stringify(noteText);
+    const safeCategory = JSON.stringify(t.category);
+    const safeInvestor = JSON.stringify(t.investor_name || '');
+
     table.innerHTML += `
-      <tr>
+      <tr style="cursor:pointer;" onclick="showTransactionDetail(${safeCategory}, '${t.type}', ${t.amount}, '${t.transaction_date || t.created_at}', ${safeNote}, ${safeInvestor})">
         <td><span class="badge badge-${t.type}">${t.type}</span></td>
-        <td><strong>${t.category}</strong><br><small style="color:var(--text-muted)">${t.note || ""}</small></td>
+        <td><strong>${t.category}</strong>${investorLabel}<br><small style="color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;display:inline-block;vertical-align:bottom;">${truncatedNote}</small></td>
         <td style="font-weight: 600">${formatMoney(t.amount)}</td>
         <td>${formatDate(t.transaction_date || t.created_at)}</td>
         <td>
           <div style="display:flex; gap:5px;">
             ${t.type === 'expense' ? `
-              <button class="btn-icon-danger" style="background: rgba(139, 92, 246, 0.1); color: var(--color-investment);" onclick="makeRecurring('${t.category.replace(/'/g, "\\'")}', ${t.amount})" title="Make Recurring">
+              <button class="btn-icon-danger" style="background: rgba(139, 92, 246, 0.1); color: var(--color-investment);" onclick="event.stopPropagation();makeRecurring('${t.category.replace(/'/g, "\\'")}', ${t.amount})" title="Make Recurring">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.23l.14.34"/></svg>
               </button>
             ` : ''}
-            <button class="btn-icon-danger" onclick="openDeleteModal(${t.id})" title="Delete Transaction">
+            <button class="btn-icon-danger" onclick="event.stopPropagation();openDeleteModal(${t.id})" title="Delete Transaction">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
           </div>
@@ -291,9 +298,61 @@ function renderProfitChart(timeline) {
 const txModal = document.getElementById("transactionModal");
 document.getElementById("openModalBtn").onclick = () => {
   document.getElementById("transactionDate").valueAsDate = new Date();
+  // Show investor field since Investment is the default selected type
+  document.getElementById('investorGroup').style.display = 'block';
   loadInvestors();
   txModal.classList.add("active");
 };
+document.getElementById("closeModalBtn").onclick = () => txModal.classList.remove("active");
+
+// Transaction detail viewer
+function showTransactionDetail(category, type, amount, date, note, investor) {
+  const existing = document.getElementById('txDetailOverlay');
+  if (existing) existing.remove();
+
+  const typeColors = { income: 'var(--color-income)', expense: 'var(--color-expense)', investment: 'var(--color-investment)' };
+  const investorRow = (type === 'investment' && investor) ? `
+    <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
+      <span style="color:var(--text-muted);font-size:14px;">Investor</span>
+      <span style="font-weight:600;color:var(--color-investment);">${investor}</span>
+    </div>` : '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'txDetailOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);animation:fadeIn 0.2s ease;';
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:16px;padding:30px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <h3 style="margin:0;font-size:18px;">Transaction Details</h3>
+        <button onclick="document.getElementById('txDetailOverlay').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
+        <span style="color:var(--text-muted);font-size:14px;">Type</span>
+        <span class="badge badge-${type}" style="font-size:13px;">${type}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
+        <span style="color:var(--text-muted);font-size:14px;">Category</span>
+        <span style="font-weight:600;">${category}</span>
+      </div>
+      ${investorRow}
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
+        <span style="color:var(--text-muted);font-size:14px;">Amount</span>
+        <span style="font-weight:700;font-size:18px;color:${typeColors[type] || 'var(--text-main)'}">${formatMoney(amount)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
+        <span style="color:var(--text-muted);font-size:14px;">Date</span>
+        <span style="font-weight:500;">${formatDate(date)}</span>
+      </div>
+      ${note ? `
+      <div style="padding:12px 0;">
+        <span style="color:var(--text-muted);font-size:14px;display:block;margin-bottom:8px;">Note</span>
+        <p style="margin:0;color:var(--text-main);font-size:14px;line-height:1.6;background:var(--bg-secondary);padding:12px;border-radius:8px;">${note}</p>
+      </div>` : ''}
+    </div>
+  `;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
 document.getElementById("closeModalBtn").onclick = () => txModal.classList.remove("active");
 
 document.getElementById("addForm").onsubmit = async e => {
