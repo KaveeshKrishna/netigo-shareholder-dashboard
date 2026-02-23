@@ -684,6 +684,28 @@ app.get("/api/finance/summary", auth, async (req, res) => {
     let dateFilter = '';
     const params = [];
 
+    // Calculate startDate and endDate first to determine total days for recurring costs
+    let startDate = fromDate;
+    let endDate = toDate;
+
+    if (!startDate || !endDate) {
+      if (period === 'daily') { startDate = startDate || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
+      else if (period === 'weekly') { startDate = startDate || new Date(Date.now() - 12 * 7 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
+      else if (period === 'monthly') { startDate = startDate || new Date(Date.now() - 365 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
+      else if (period === 'yearly') { startDate = startDate || new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
+      else {
+        // all time
+        const firstTx = await pool.query("SELECT MIN(transaction_date) as min_date FROM transactions");
+        startDate = firstTx.rows[0]?.min_date ? new Date(firstTx.rows[0].min_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        endDate = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
+
     if (fromDate && toDate) {
       dateFilter = `AND transaction_date >= $1 AND transaction_date <= $2`;
       params.push(fromDate, toDate);
@@ -698,10 +720,22 @@ app.get("/api/finance/summary", auth, async (req, res) => {
     else if (period === 'monthly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '12 months'";
     else if (period === 'yearly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '5 years'";
 
-    // Totals for this period
+    // Calculate daily recurring expense
+    const recRes = await pool.query("SELECT amount, billing_cycle FROM recurring_costs");
+    let dailyRecurringExpense = 0;
+    recRes.rows.forEach(r => {
+      const amt = parseFloat(r.amount);
+      if (r.billing_cycle === 'daily') dailyRecurringExpense += amt;
+      else if (r.billing_cycle === 'weekly') dailyRecurringExpense += amt / 7;
+      else if (r.billing_cycle === 'monthly') dailyRecurringExpense += amt / (365 / 12);
+      else if (r.billing_cycle === 'yearly') dailyRecurringExpense += amt / 365;
+    });
+
+    // Totals for this period (Ignoring transaction expenses that match recurring categories)
     const totals = await pool.query(`
       SELECT type, COALESCE(SUM(amount), 0) as total
       FROM transactions WHERE 1=1 ${dateFilter}
+      AND NOT (type = 'expense' AND category IN (SELECT name FROM recurring_costs))
       GROUP BY type
     `, params);
 
@@ -711,6 +745,9 @@ app.get("/api/finance/summary", auth, async (req, res) => {
       else if (r.type === 'expense') totalExpense = parseFloat(r.total);
       else if (r.type === 'investment') totalInvestment = parseFloat(r.total);
     });
+
+    // Add distributed recurring expenses for the period
+    totalExpense += (dailyRecurringExpense * diffDays);
 
     const grossProfit = totalIncome;
     const netProfit = totalIncome - totalExpense;
@@ -734,35 +771,35 @@ app.get("/api/finance/summary", auth, async (req, res) => {
       return { name: r.investor_name, invested, share: Math.round(share * 100) / 100, profitShare: Math.round(profitShare * 100) / 100 };
     });
 
-    // Timeline data (always daily, frontend handles bucketing)
+    // Timeline data (ignoring matching recurring categories)
     const timeRes = await pool.query(`
       SELECT TO_CHAR(transaction_date, 'YYYY-MM-DD') as date, type, COALESCE(SUM(amount), 0) as total
       FROM transactions WHERE 1=1 ${dateFilter}
+      AND NOT (type = 'expense' AND category IN (SELECT name FROM recurring_costs))
       GROUP BY date, type ORDER BY date ASC
     `, params);
 
     const timelineMap = {};
-    timeRes.rows.forEach(r => {
-      if (!timelineMap[r.date]) timelineMap[r.date] = { date: r.date, income: 0, expense: 0, investment: 0 };
-      timelineMap[r.date][r.type] = parseFloat(r.total);
-    });
-    const timeline = Object.values(timelineMap);
 
-    // Determine exact bounds for the frontend to pad zeros
-    let startDate = fromDate;
-    let endDate = toDate;
-
-    if (!startDate || !endDate) {
-      if (period === 'daily') { startDate = startDate || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
-      else if (period === 'weekly') { startDate = startDate || new Date(Date.now() - 12 * 7 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
-      else if (period === 'monthly') { startDate = startDate || new Date(Date.now() - 365 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
-      else if (period === 'yearly') { startDate = startDate || new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
-      else {
-        // all time
-        if (timeline.length > 0) startDate = timeline[0].date;
-        endDate = new Date().toISOString().split('T')[0];
-      }
+    // Pre-fill timelineMap for every day with the daily recurring expense
+    let currDate = new Date(startDate);
+    while (currDate <= end) {
+      const dStr = currDate.toISOString().split('T')[0];
+      timelineMap[dStr] = { date: dStr, income: 0, expense: dailyRecurringExpense, investment: 0 };
+      currDate.setDate(currDate.getDate() + 1);
     }
+
+    // Overlay extra transactions
+    timeRes.rows.forEach(r => {
+      if (!timelineMap[r.date]) timelineMap[r.date] = { date: r.date, income: 0, expense: dailyRecurringExpense, investment: 0 };
+      if (r.type === 'expense') {
+        timelineMap[r.date].expense += parseFloat(r.total);
+      } else {
+        timelineMap[r.date][r.type] += parseFloat(r.total);
+      }
+    });
+
+    const timeline = Object.values(timelineMap).sort((a, b) => a.date.localeCompare(b.date));
 
     res.json({ totalIncome, totalExpense, totalInvestment, grossProfit, netProfit, companyValuation, investors, timeline, startDate, endDate });
   } catch (error) {
