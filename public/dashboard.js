@@ -229,6 +229,7 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
       },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '70%',
+        animation: { duration: 600, easing: 'easeInOutQuart' },
         plugins: {
           legend: { display: false },
           tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', padding: 10, cornerRadius: 8, callbacks: { label: tooltipCb } }
@@ -247,14 +248,14 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
         <div style="width:10px;height:10px;border-radius:50%;background:#64748b;flex-shrink:0;"></div>
         <div>
           <p style="margin:0;font-weight:600;font-size:13px;color:var(--text-main);">💰 Company Savings</p>
+          <p style="margin:0;font-size:10px;color:var(--text-muted);">Share: ${companySavingsPct}%</p>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <input type="number" value="${companySavingsPct}" min="0" max="100" step="0.5"
-          style="width:55px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:4px 6px;font-size:12px;text-align:right;font-family:Outfit;"
-          onchange="updateCompanySavings(this.value)" />
-        <span style="color:var(--text-muted);font-size:11px;">%</span>
-        <span style="font-weight:600;font-size:12px;color:#64748b;min-width:70px;text-align:right;">${formatMoney(companySavingsAmt)}</span>
+        <span style="font-weight:600;font-size:12px;color:#64748b;">${formatMoney(companySavingsAmt)}</span>
+        <button onclick="openEditCompanySavingsModal(${companySavingsPct})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;" title="Edit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
       </div>
     </div>
   `;
@@ -267,7 +268,9 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
           <div style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]};flex-shrink:0;"></div>
           <div style="min-width:0;">
             <p style="margin:0;font-weight:600;font-size:13px;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inv.name}</p>
-            <p style="margin:0;font-size:10px;color:var(--text-muted);">Invested: ${formatMoney(inv.invested)} · Own: ${inv.ownership_pct}% · Profit: ${inv.profit_share_pct}%</p>
+            <p style="margin:0;font-size:10px;color:var(--color-investment);">Invested: ${formatMoney(inv.invested)}</p>
+            <p style="margin:0;font-size:10px;color:var(--text-muted);">Ownership: ${inv.ownership_pct}%</p>
+            <p style="margin:0;font-size:10px;color:var(--text-muted);">Profit Share: ${inv.profit_share_pct}%</p>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -396,6 +399,39 @@ async function updateCompanySavings(val) {
     body: JSON.stringify({ pct: val })
   });
   loadFinanceSummary();
+}
+
+function openEditCompanySavingsModal(currentPct) {
+  const existing = document.getElementById('investorModal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'investorModal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:16px;padding:30px;width:90%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <h3 style="margin:0 0 20px;color:var(--text-main);font-family:Outfit;">💰 Company Savings</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Savings % of Net Profit</label>
+          <input type="number" id="editCompanySavings" value="${currentPct}" min="0" max="100" step="0.5" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px;">
+          <button onclick="submitCompanySavings()" class="btn-primary" style="flex:1;justify-content:center;padding:12px;border-radius:10px;font-size:14px;">Save</button>
+          <button onclick="document.getElementById('investorModal').remove()" class="btn-secondary" style="padding:12px 20px;border-radius:10px;font-size:14px;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function submitCompanySavings() {
+  const val = document.getElementById('editCompanySavings').value;
+  await updateCompanySavings(val);
+  document.getElementById('investorModal').remove();
 }
 
 function switchInvestorChartMode(mode) {
