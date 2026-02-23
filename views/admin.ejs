@@ -314,8 +314,10 @@
         // --- Notes System ---
         let notesData = [];
         let currentNotesTab = 'personal';
+        let isAnimating = false;
 
         async function loadNotes() {
+            if (isAnimating) return;
             try {
                 const res = await fetch("/api/notes");
                 notesData = await res.json();
@@ -390,6 +392,7 @@
         }
 
         async function toggleNoteCompletion(id) {
+            isAnimating = true;
             const radio = document.querySelector(`input[type="radio"][onclick="toggleNoteCompletion(${id})"]`);
             const noteItem = radio ? radio.closest('.note-item') : null;
             if (noteItem) {
@@ -399,11 +402,11 @@
             try {
                 const res = await fetch('/api/notes/' + id + '/toggle-complete', { method: 'PUT' });
                 if (!res.ok) throw new Error("Unauthorized");
-                loadNotes();
             } catch (err) {
                 alert("You do not have permission to modify this task.");
-                loadNotes();
             }
+            isAnimating = false;
+            loadNotes();
         }
 
         async function addNote() {

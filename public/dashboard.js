@@ -339,8 +339,11 @@ setInterval(loadNotes, 2000);
 // --- Notes System ---
 let notesData = [];
 let currentNotesTab = 'personal';
+let completedFilter = 'all';
+let isAnimating = false;
 
 async function loadNotes() {
+  if (isAnimating) return;
   try {
     const res = await fetch("/api/notes");
     notesData = await res.json();
@@ -418,14 +421,34 @@ function renderNotes() {
   if (!list) return;
   list.innerHTML = "";
 
-  const filteredNotes = notesData.filter(n => {
+  let filteredNotes = notesData.filter(n => {
     if (currentNotesTab === 'completed') return n.is_completed;
     if (currentNotesTab === 'global') return !n.is_completed && n.is_global;
     return !n.is_completed && !n.is_global;
   });
 
+  // Sub-filter for completed tab
+  if (currentNotesTab === 'completed' && completedFilter !== 'all') {
+    filteredNotes = filteredNotes.filter(n => completedFilter === 'global' ? n.is_global : !n.is_global);
+  }
+
+  // Show filter bar + Delete All for completed tab
+  if (currentNotesTab === 'completed') {
+    const toolbar = document.createElement('div');
+    toolbar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;';
+    toolbar.innerHTML = `
+      <select onchange="completedFilter=this.value;renderNotes()" style="background:var(--bg-dark);border:1px solid var(--border-light);color:var(--text-main);padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;outline:none;">
+        <option value="all" ${completedFilter === 'all' ? 'selected' : ''}>All</option>
+        <option value="personal" ${completedFilter === 'personal' ? 'selected' : ''}>Personal</option>
+        <option value="global" ${completedFilter === 'global' ? 'selected' : ''}>Global</option>
+      </select>
+      <button onclick="deleteAllCompleted()" style="background:rgba(239,68,68,0.15);color:var(--color-expense);border:1px solid rgba(239,68,68,0.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;">🗑 Delete All</button>
+    `;
+    list.appendChild(toolbar);
+  }
+
   if (filteredNotes.length === 0) {
-    list.innerHTML = `<p style="padding: 10px; color: var(--text-muted); text-align: center; font-style: italic;">No tasks found.</p>`;
+    list.innerHTML += `<p style="padding: 10px; color: var(--text-muted); text-align: center; font-style: italic;">No tasks found.</p>`;
     return;
   }
 
@@ -441,11 +464,10 @@ function renderNotes() {
     div.className = "note-item";
     div.style.cursor = "pointer";
 
-    // Escape task string directly for safety
     const safeNoteData = encodeURIComponent(JSON.stringify(note));
 
     div.onclick = function (e) {
-      if (e.target.tagName.toLowerCase() === 'input') return;
+      if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'button' || e.target.closest('button')) return;
       openViewTaskModal(JSON.parse(decodeURIComponent(safeNoteData)));
     };
 
@@ -467,6 +489,11 @@ function renderNotes() {
       deadlineHtml = `<span style="font-size: 11px; color: var(--text-muted); margin-right: 8px;">Due: Anytime</span>`;
     }
 
+    // Delete button only in completed tab
+    const deleteBtn = currentNotesTab === 'completed'
+      ? `<button onclick="deleteNote(${note.id}, ${note.is_global})" style="flex-shrink:0;background:none;border:none;color:var(--color-expense);cursor:pointer;font-size:14px;padding:4px;opacity:0.6;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Delete forever">🗑</button>`
+      : '';
+
     div.innerHTML = `
       <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
         <input type="radio" ${isChecked} onclick="toggleNoteCompletion(${note.id})">
@@ -478,13 +505,61 @@ function renderNotes() {
           ${tagHtml}
         </div>
       </div>
+      ${deleteBtn}
     `;
     list.appendChild(div);
   });
 }
 
+async function deleteNote(id, isGlobal) {
+  if (isGlobal) {
+    const typed = prompt('This is a GLOBAL task. It will be deleted for ALL users.\nType DELETE to confirm:');
+    if (typed !== 'DELETE') return;
+  } else {
+    if (!confirm('Delete this task permanently?')) return;
+  }
+
+  isAnimating = true;
+  const btn = document.querySelector(`button[onclick="deleteNote(${id}, ${isGlobal})"]`);
+  const noteItem = btn ? btn.closest('.note-item') : null;
+  if (noteItem) {
+    noteItem.classList.add('note-item-fade-out');
+    await new Promise(r => setTimeout(r, 350));
+  }
+
+  try {
+    await fetch('/api/notes/' + id, { method: 'DELETE' });
+  } catch (err) {
+    alert('Failed to delete task.');
+  }
+  isAnimating = false;
+  loadNotes();
+}
+
+async function deleteAllCompleted() {
+  const hasGlobal = notesData.some(n => n.is_completed && n.is_global);
+  if (hasGlobal) {
+    const typed = prompt('This will delete completed tasks including GLOBAL tasks for ALL users.\nType DELETE to confirm:');
+    if (typed !== 'DELETE') return;
+  } else {
+    if (!confirm('Delete all completed tasks permanently?')) return;
+  }
+
+  isAnimating = true;
+  document.querySelectorAll('.note-item').forEach(el => el.classList.add('note-item-fade-out'));
+  await new Promise(r => setTimeout(r, 350));
+
+  try {
+    await fetch('/api/notes/completed/all', { method: 'DELETE' });
+  } catch (err) {
+    alert('Failed to delete tasks.');
+  }
+  isAnimating = false;
+  loadNotes();
+}
+
 async function toggleNoteCompletion(id) {
-  // Find the radio input and animate the parent note-item
+  isAnimating = true;
   const radio = document.querySelector(`input[type="radio"][onclick="toggleNoteCompletion(${id})"]`);
   const noteItem = radio ? radio.closest('.note-item') : null;
 
@@ -496,11 +571,12 @@ async function toggleNoteCompletion(id) {
   try {
     const res = await fetch('/api/notes/' + id + '/toggle-complete', { method: 'PUT' });
     if (!res.ok) throw new Error("Unauthorized");
-    loadNotes();
   } catch (err) {
     alert("You do not have permission to modify this task.");
-    loadNotes();
   }
+
+  isAnimating = false;
+  loadNotes();
 }
 
 async function addNote() {

@@ -258,6 +258,20 @@ app.post("/api/notes", auth, async (req, res) => {
   }
 });
 
+app.delete("/api/notes/completed/all", auth, async (req, res) => {
+  try {
+    if (req.user.role === 'superadmin') {
+      await pool.query("DELETE FROM notes WHERE is_completed = true");
+    } else {
+      await pool.query("DELETE FROM notes WHERE is_completed = true AND (user_id = $1 OR assigned_to = $1)", [req.user.id]);
+    }
+    dataVersion++;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete completed notes" });
+  }
+});
+
 app.delete("/api/notes/:id", auth, async (req, res) => {
   try {
     if (req.user.role === 'superadmin') {
@@ -266,6 +280,7 @@ app.delete("/api/notes/:id", auth, async (req, res) => {
       const result = await pool.query("DELETE FROM notes WHERE id = $1 AND user_id = $2", [req.params.id, req.user.id]);
       if (result.rowCount === 0) return res.status(403).json({ error: "Unauthorized to delete this note" });
     }
+    dataVersion++;
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete note" });
