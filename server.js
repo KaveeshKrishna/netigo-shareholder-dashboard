@@ -88,19 +88,21 @@ async function initDb() {
       )
     `);
 
-    await pool.query(`DROP TABLE IF EXISTS notes`);
     await pool.query(`
-      CREATE TABLE notes (
+      CREATE TABLE IF NOT EXISTS notes (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
         content TEXT NOT NULL,
+        description TEXT,
         is_global BOOLEAN DEFAULT false,
         is_completed BOOLEAN DEFAULT false,
         deadline TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    await pool.query(`ALTER TABLE notes ADD COLUMN IF NOT EXISTS description TEXT`);
 
     // Auto-create founders
     const usersCount = await pool.query("SELECT COUNT(*) FROM users");
@@ -231,7 +233,7 @@ app.get("/api/notes", auth, async (req, res) => {
 });
 
 app.post("/api/notes", auth, async (req, res) => {
-  const { content, is_global, deadline, assigned_to } = req.body;
+  const { content, description, is_global, deadline, assigned_to } = req.body;
   if (!content) return res.status(400).json({ error: "Content is required" });
 
   try {
@@ -246,8 +248,8 @@ app.post("/api/notes", auth, async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO notes (user_id, assigned_to, content, is_global, deadline) VALUES ($1, $2, $3, $4, $5)",
-      [req.user.id, assignId, content, is_global === true || is_global === 'true', deadlineTS]
+      "INSERT INTO notes (user_id, assigned_to, content, description, is_global, deadline) VALUES ($1, $2, $3, $4, $5, $6)",
+      [req.user.id, assignId, content, description || null, is_global === true || is_global === 'true', deadlineTS]
     );
     dataVersion++;
     res.json({ success: true });

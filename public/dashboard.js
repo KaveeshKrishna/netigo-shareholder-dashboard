@@ -351,16 +351,65 @@ async function loadNotes() {
 
 function switchNotesTab(tab) {
   currentNotesTab = tab;
-  document.querySelectorAll('#notesTabs button').forEach(b => b.classList.remove('active-tab'));
-  event.target.classList.add('active-tab');
   renderNotes();
 }
 
-function toggleGlobalOptions() {
-  const isGlobal = document.getElementById("newNoteGlobal").value === "true";
-  document.getElementById("globalTaskOptions").style.display = isGlobal ? "flex" : "none";
-  document.getElementById("personalTaskOptions").style.display = isGlobal ? "none" : "flex";
+function openAddTaskModal() {
+  document.getElementById('addTaskModal').classList.add('active');
+  document.getElementById('modalNoteInput').focus();
 }
+document.getElementById('closeTaskBtn')?.addEventListener('click', () => {
+  document.getElementById('addTaskModal').classList.remove('active');
+});
+
+function toggleModalGlobalOptions() {
+  const isGlobal = document.getElementById("modalNoteGlobal").value === "true";
+  document.getElementById("modalGlobalOptions").style.display = isGlobal ? "flex" : "none";
+}
+
+function stringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+  return '#' + '00000'.substring(0, 6 - c.length) + c;
+}
+
+function openViewTaskModal(note) {
+  document.getElementById('viewTaskTitle').innerText = note.content;
+  document.getElementById('viewTaskDescription').innerText = note.description || 'No description provided.';
+
+  const metaContainer = document.getElementById('viewTaskMeta');
+  metaContainer.innerHTML = '';
+
+  const dateStr = note.created_at ? new Date(note.created_at).toLocaleDateString() : '';
+  let metaHtml = `<span style="background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-light);">Created: ${dateStr}</span>`;
+
+  if (note.is_global) {
+    metaHtml += `<span style="background: rgba(239, 68, 68, 0.1); color: var(--color-expense); padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2);">Global Task</span>`;
+    if (note.assignee_name) {
+      metaHtml += `<span style="background: rgba(59, 130, 246, 0.1); color: var(--color-balance); padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2);">Assigned to: ${note.assignee_name}</span>`;
+    }
+  } else {
+    metaHtml += `<span style="background: rgba(139, 92, 246, 0.1); color: var(--color-investment); padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(139, 92, 246, 0.2);">Personal Task</span>`;
+  }
+
+  metaContainer.innerHTML = metaHtml;
+
+  const deadlineContainer = document.getElementById('viewTaskDeadlineContainer');
+  if (note.deadline) {
+    document.getElementById('viewTaskDeadline').innerText = 'Due: ' + new Date(note.deadline).toLocaleDateString();
+    deadlineContainer.style.display = 'flex';
+  } else {
+    deadlineContainer.style.display = 'none';
+  }
+
+  document.getElementById('viewTaskModal').classList.add('active');
+}
+document.getElementById('closeViewTaskBtn')?.addEventListener('click', () => {
+  document.getElementById('viewTaskModal').classList.remove('active');
+});
 
 function renderNotes() {
   const list = document.getElementById("notesList");
@@ -379,32 +428,44 @@ function renderNotes() {
   }
 
   filteredNotes.forEach(note => {
-    const dateStr = note.created_at ? new Date(note.created_at).toLocaleDateString() : '';
-    let metaHtml = '';
-
-    if (note.is_global) {
-      metaHtml += `<span style="color: var(--color-expense); font-weight: bold;">Global by ${note.creator_name || 'System'}</span>`;
-      if (note.assignee_name) metaHtml += ` &bull; Assigned to: ${note.assignee_name}`;
-    } else {
-      metaHtml += `<span style="color: var(--color-investment); font-weight: bold;">Personal Task</span>`;
-    }
-    metaHtml += ` &bull; Created: ${dateStr}`;
-
-    if (note.deadline) {
-      const dl = new Date(note.deadline).toLocaleDateString();
-      metaHtml += ` &bull; <span style="color: #ef4444;">Due: ${dl}</span>`;
-    }
-
     const div = document.createElement("div");
     div.className = "note-item";
+    div.style.cursor = "pointer";
 
-    const checked = note.is_completed ? 'checked' : '';
+    // Escape task string directly for safety
+    const safeNoteData = encodeURIComponent(JSON.stringify(note));
+
+    div.onclick = function (e) {
+      if (e.target.tagName.toLowerCase() === 'input') return;
+      openViewTaskModal(JSON.parse(decodeURIComponent(safeNoteData)));
+    };
+
+    const isChecked = note.is_completed ? 'checked' : '';
+    const textStyle = note.is_completed ? 'text-decoration: line-through; opacity: 0.5;' : '';
+
+    let tagHtml = '';
+    if (note.is_global && note.assignee_name) {
+      const shortName = note.assignee_name.split('@')[0];
+      const dotColor = stringToColor(shortName);
+      tagHtml = `<span style="font-size: 11px; font-weight: 500; background: rgba(0,0,0,0.3); border: 1px solid var(--border-light); padding: 2px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: ${dotColor};"></span>${shortName}</span>`;
+    }
+
+    let deadlineHtml = '';
+    if (note.deadline) {
+      const dl = new Date(note.deadline).toLocaleDateString();
+      deadlineHtml = `<span style="font-size: 11px; color: var(--color-expense); margin-right: 8px;">Due: ${dl}</span>`;
+    }
 
     div.innerHTML = `
-      <input type="checkbox" ${checked} onchange="toggleNoteCompletion(${note.id})" style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);">
-      <div style="flex: 1;">
-        <div style="font-size: 11px; margin-bottom: 4px; opacity: 0.8;">${metaHtml}</div>
-        <p style="color: var(--text-main); font-size: 14px; margin: 0; line-height: 1.5; word-wrap: break-word; ${note.is_completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${note.content}</p>
+      <div style="padding-top: 2px;">
+        <input type="radio" ${isChecked} onclick="toggleNoteCompletion(${note.id})" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); margin: 0;">
+      </div>
+      <div style="flex: 1; min-width: 0;">
+        <p style="color: var(--text-main); font-size: 14px; margin: 0 0 4px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; ${textStyle}">${note.content}</p>
+        <div style="display: flex; align-items: center; flex-wrap: wrap;">
+          ${deadlineHtml}
+          ${tagHtml}
+        </div>
       </div>
     `;
     list.appendChild(div);
@@ -423,12 +484,14 @@ async function toggleNoteCompletion(id) {
 }
 
 async function addNote() {
-  const input = document.getElementById("newNoteInput");
-  const typeSelect = document.getElementById("newNoteGlobal");
-  const deadlineInput = document.getElementById("newNoteDeadline");
-  const assigneeSelect = document.getElementById("newNoteAssignee");
+  const input = document.getElementById("modalNoteInput");
+  const descInput = document.getElementById("modalNoteDescription");
+  const typeSelect = document.getElementById("modalNoteGlobal");
+  const deadlineInput = document.getElementById("modalNoteDeadline");
+  const assigneeSelect = document.getElementById("modalNoteAssignee");
 
   const content = input.value.trim();
+  const description = descInput ? descInput.value.trim() : "";
   const is_global = typeSelect.value === "true";
   const deadline = deadlineInput && is_global ? deadlineInput.value : null;
   const assigned_to = assigneeSelect && is_global ? assigneeSelect.value : null;
@@ -439,10 +502,16 @@ async function addNote() {
     await fetch("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, is_global, deadline, assigned_to })
+      body: JSON.stringify({ content, description, is_global, deadline, assigned_to })
     });
+
+    // reset form
     input.value = "";
+    if (descInput) descInput.value = "";
     if (deadlineInput) deadlineInput.value = "";
+    document.getElementById("addTaskModal").classList.remove('active');
+
+    // Refresh
     loadNotes();
   } catch (err) {
     alert("Error adding note.");

@@ -907,3 +907,75 @@ select option {
  } 
   
  
+/* Notes & Task UI Polishing */
+.note-item {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 12px !important;
+  margin-bottom: 10px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.note-item:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.note-item input[type='radio'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid var(--border-light);
+  border-radius: 50%;
+  outline: none;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.note-item input[type='radio']:hover {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.note-item input[type='radio']:checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.note-item input[type='radio']:checked::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+#notesList::-webkit-scrollbar {
+  width: 6px;
+}
+#notesList::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+#notesList::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+#notesList::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
