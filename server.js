@@ -104,6 +104,15 @@ async function initDb() {
 
     await pool.query(`ALTER TABLE notes ADD COLUMN IF NOT EXISTS description TEXT`);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS investors (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+      )
+    `);
+
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS investor_name VARCHAR(255)`);
+
     // Auto-create founders
     const usersCount = await pool.query("SELECT COUNT(*) FROM users");
     if (parseInt(usersCount.rows[0].count) === 0) {
@@ -317,19 +326,24 @@ app.get("/api/transactions", auth, async (req, res) => {
 });
 
 app.post("/api/add", auth, async (req, res) => {
-  const { type, category, amount, note, date } = req.body;
+  const { type, category, amount, note, date, investor_name } = req.body;
   try {
     const tDate = date || new Date().toISOString().split('T')[0];
 
     await pool.query(
-      "INSERT INTO transactions (type, category, amount, note, transaction_date) VALUES ($1, $2, $3, $4, $5)",
-      [type, category, amount, note, tDate]
+      "INSERT INTO transactions (type, category, amount, note, transaction_date, investor_name) VALUES ($1, $2, $3, $4, $5, $6)",
+      [type, category, amount, note, tDate, type === 'investment' ? (investor_name || null) : null]
     );
+
+    // Auto-add investor to presets
+    if (type === 'investment' && investor_name && investor_name.trim()) {
+      await pool.query("INSERT INTO investors (name) VALUES ($1) ON CONFLICT DO NOTHING", [investor_name.trim()]);
+    }
 
     // Record to audit log
     await pool.query(
       "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
-      ['INSERT', `Added ${type.toUpperCase()} of ₹${amount} for ${category}`, req.user.username]
+      ['INSERT', `Added ${type.toUpperCase()} of ₹${amount} for ${category}${investor_name ? ' by ' + investor_name : ''}`, req.user.username]
     );
 
     dataVersion++;
@@ -454,6 +468,99 @@ app.post("/api/categories", auth, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to add category" });
+  }
+});
+
+// ---------- INVESTORS ROUTES ----------
+app.get("/api/investors", auth, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM investors ORDER BY name ASC");
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch investors" });
+  }
+});
+
+app.post("/api/investors", auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: "Name required" });
+  try {
+    await pool.query("INSERT INTO investors (name) VALUES ($1) ON CONFLICT DO NOTHING", [name.trim()]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add investor" });
+  }
+});
+
+// ---------- FINANCE SUMMARY ----------
+app.get("/api/finance/summary", auth, async (req, res) => {
+  const period = req.query.period || 'all';
+  try {
+    let dateFilter = '';
+    if (period === 'daily') dateFilter = "AND transaction_date = CURRENT_DATE";
+    else if (period === 'weekly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '7 days'";
+    else if (period === 'monthly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '30 days'";
+    else if (period === 'yearly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '365 days'";
+
+    // Totals for this period
+    const totals = await pool.query(`
+      SELECT type, COALESCE(SUM(amount), 0) as total
+      FROM transactions WHERE 1=1 ${dateFilter}
+      GROUP BY type
+    `);
+
+    let totalIncome = 0, totalExpense = 0, totalInvestment = 0;
+    totals.rows.forEach(r => {
+      if (r.type === 'income') totalIncome = parseFloat(r.total);
+      else if (r.type === 'expense') totalExpense = parseFloat(r.total);
+      else if (r.type === 'investment') totalInvestment = parseFloat(r.total);
+    });
+
+    const grossProfit = totalIncome;
+    const netProfit = totalIncome - totalExpense;
+
+    // Company valuation = ALL TIME investments (not period-filtered)
+    const valRes = await pool.query("SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'investment'");
+    const companyValuation = parseFloat(valRes.rows[0].total);
+
+    // Investor breakdown (all-time investments for ownership %)
+    const invRes = await pool.query(`
+      SELECT investor_name, SUM(amount) as invested
+      FROM transactions
+      WHERE type = 'investment' AND investor_name IS NOT NULL AND investor_name != ''
+      GROUP BY investor_name ORDER BY invested DESC
+    `);
+
+    const investors = invRes.rows.map(r => {
+      const invested = parseFloat(r.invested);
+      const share = companyValuation > 0 ? (invested / companyValuation) * 100 : 0;
+      const profitShare = companyValuation > 0 ? (invested / companyValuation) * netProfit : 0;
+      return { name: r.investor_name, invested, share: Math.round(share * 100) / 100, profitShare: Math.round(profitShare * 100) / 100 };
+    });
+
+    // Timeline data (grouped by period)
+    let groupExpr = "TO_CHAR(transaction_date, 'YYYY-MM')";
+    if (period === 'daily') groupExpr = "TO_CHAR(transaction_date, 'YYYY-MM-DD')";
+    else if (period === 'weekly') groupExpr = "TO_CHAR(transaction_date, 'IYYY-IW')";
+    else if (period === 'yearly') groupExpr = "TO_CHAR(transaction_date, 'YYYY')";
+
+    const timeRes = await pool.query(`
+      SELECT ${groupExpr} as period, type, COALESCE(SUM(amount), 0) as total
+      FROM transactions WHERE 1=1 ${dateFilter}
+      GROUP BY period, type ORDER BY period ASC
+    `);
+
+    const timelineMap = {};
+    timeRes.rows.forEach(r => {
+      if (!timelineMap[r.period]) timelineMap[r.period] = { period: r.period, income: 0, expense: 0, investment: 0 };
+      timelineMap[r.period][r.type] = parseFloat(r.total);
+    });
+    const timeline = Object.values(timelineMap);
+
+    res.json({ totalIncome, totalExpense, totalInvestment, grossProfit, netProfit, companyValuation, investors, timeline });
+  } catch (error) {
+    console.error("Finance summary error:", error);
+    res.status(500).json({ error: "Failed to compute finance summary" });
   }
 });
 

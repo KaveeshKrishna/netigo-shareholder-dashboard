@@ -108,10 +108,190 @@ document.getElementById("newCategoryBtn").onclick = async () => {
   }
 };
 
+// 1.5 Investors
+async function loadInvestors() {
+  const res = await fetch("/api/investors");
+  const investors = await res.json();
+  const select = document.getElementById("investorSelect");
+  if (!select) return;
+  select.innerHTML = '<option value="">Select Investor</option>';
+  investors.forEach(i => {
+    select.innerHTML += `<option value="${i.name}">${i.name}</option>`;
+  });
+}
+
+document.getElementById("newInvestorBtn").onclick = async () => {
+  const name = prompt("Enter investor name:");
+  if (name && name.trim()) {
+    await fetch("/api/investors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim() })
+    });
+    await loadInvestors();
+    document.getElementById("investorSelect").value = name.trim();
+  }
+};
+
+// Show/hide investor field based on transaction type
+document.querySelector('#addForm select[name="type"]').addEventListener('change', function () {
+  const investorGroup = document.getElementById('investorGroup');
+  if (investorGroup) investorGroup.style.display = this.value === 'investment' ? 'block' : 'none';
+});
+
+// --- Finance Summary & Charts ---
+let revenueChartInstance, investorChartInstance, profitChartInstance;
+
+async function loadFinanceSummary() {
+  const period = document.getElementById('timelinePeriod')?.value || 'monthly';
+  try {
+    const res = await fetch(`/api/finance/summary?period=${period}`);
+    const data = await res.json();
+
+    // Update stat cards
+    document.getElementById('netProfit').innerText = formatMoney(data.netProfit);
+    document.getElementById('companyValuation').innerText = formatMoney(data.companyValuation);
+
+    // Render all charts
+    renderRevenueChart(data.timeline);
+    renderInvestorWidget(data.investors, data.companyValuation);
+    renderProfitChart(data.timeline);
+  } catch (err) {
+    console.error('Finance summary error:', err);
+  }
+}
+
+function renderRevenueChart(timeline) {
+  const ctx = document.getElementById('revenueChart');
+  if (!ctx) return;
+  if (revenueChartInstance) revenueChartInstance.destroy();
+
+  revenueChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: timeline.map(t => t.period),
+      datasets: [
+        { label: 'Earnings', data: timeline.map(t => t.income), backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.7 },
+        { label: 'Expenses', data: timeline.map(t => t.expense), backgroundColor: '#ef4444', borderRadius: 6, barPercentage: 0.7 },
+        { label: 'Investments', data: timeline.map(t => t.investment), backgroundColor: '#8b5cf6', borderRadius: 6, barPercentage: 0.7 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle', font: { family: 'Outfit' } } },
+        tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', titleFont: { size: 13 }, bodyFont: { size: 13, weight: 'bold' }, padding: 12, cornerRadius: 8, callbacks: { label: c => ' ' + c.dataset.label + ': ' + formatMoney(c.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Outfit', size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { family: 'Outfit', size: 11 }, callback: v => '₹' + v.toLocaleString() } }
+      }
+    }
+  });
+}
+
+function renderInvestorWidget(investors, totalVal) {
+  const ctx = document.getElementById('investorChart');
+  const list = document.getElementById('investorList');
+  if (!ctx || !list) return;
+
+  if (investorChartInstance) investorChartInstance.destroy();
+
+  const colors = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#6366f1'];
+
+  if (investors.length === 0) {
+    list.innerHTML = '<p style="color:var(--text-muted);text-align:center;font-size:13px;padding:20px;">No investor data yet. Add investments with investor names.</p>';
+    return;
+  }
+
+  investorChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: investors.map(i => i.name),
+      datasets: [{ data: investors.map(i => i.invested), backgroundColor: colors.slice(0, investors.length), borderWidth: 0, hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '70%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', padding: 10, cornerRadius: 8, callbacks: { label: c => ' ' + c.label + ': ' + formatMoney(c.raw) + ' (' + investors[c.dataIndex].share + '%)' } }
+      }
+    }
+  });
+
+  list.innerHTML = investors.map((inv, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border-light);gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]};flex-shrink:0;"></div>
+        <div>
+          <p style="margin:0;font-weight:600;font-size:14px;color:var(--text-main);">${inv.name}</p>
+          <p style="margin:0;font-size:11px;color:var(--text-muted);">${inv.share}% ownership</p>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <p style="margin:0;font-weight:600;font-size:13px;color:var(--color-investment);">${formatMoney(inv.invested)}</p>
+        <p style="margin:0;font-size:11px;color:${inv.profitShare >= 0 ? 'var(--color-income)' : 'var(--color-expense)'};">Profit: ${formatMoney(inv.profitShare)}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderProfitChart(timeline) {
+  const ctx = document.getElementById('profitChart');
+  if (!ctx) return;
+  if (profitChartInstance) profitChartInstance.destroy();
+
+  const netProfitData = timeline.map(t => t.income - t.expense);
+
+  profitChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: timeline.map(t => t.period),
+      datasets: [
+        {
+          label: 'Net Profit',
+          data: netProfitData,
+          borderColor: '#06b6d4',
+          backgroundColor: 'rgba(6,182,212,0.1)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#06b6d4'
+        },
+        {
+          label: 'Gross Profit (Earnings)',
+          data: timeline.map(t => t.income),
+          borderColor: '#10b981',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#10b981'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle', font: { family: 'Outfit' } } },
+        tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', padding: 12, cornerRadius: 8, callbacks: { label: c => ' ' + c.dataset.label + ': ' + formatMoney(c.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Outfit', size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { family: 'Outfit', size: 11 }, callback: v => '₹' + v.toLocaleString() } }
+      }
+    }
+  });
+}
+
 // 2. Add Transaction Form
 const txModal = document.getElementById("transactionModal");
 document.getElementById("openModalBtn").onclick = () => {
   document.getElementById("transactionDate").valueAsDate = new Date();
+  loadInvestors();
   txModal.classList.add("active");
 };
 document.getElementById("closeModalBtn").onclick = () => txModal.classList.remove("active");
@@ -124,8 +304,10 @@ document.getElementById("addForm").onsubmit = async e => {
     body: new URLSearchParams(form)
   });
   e.target.reset();
+  document.getElementById('investorGroup').style.display = 'none';
   txModal.classList.remove("active");
   load();
+  loadFinanceSummary();
 };
 
 // 3. Secure Deletion
@@ -329,6 +511,7 @@ async function pollData() {
 load();
 loadCategories();
 loadRecurringCosts();
+loadFinanceSummary();
 
 // Start 2-second heartbeat
 pollData();
