@@ -495,19 +495,32 @@ app.post("/api/investors", auth, async (req, res) => {
 // ---------- FINANCE SUMMARY ----------
 app.get("/api/finance/summary", auth, async (req, res) => {
   const period = req.query.period || 'all';
+  const fromDate = req.query.from || null;
+  const toDate = req.query.to || null;
   try {
     let dateFilter = '';
-    if (period === 'daily') dateFilter = "AND transaction_date = CURRENT_DATE";
-    else if (period === 'weekly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '7 days'";
-    else if (period === 'monthly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '30 days'";
-    else if (period === 'yearly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '365 days'";
+    const params = [];
+
+    if (fromDate && toDate) {
+      dateFilter = `AND transaction_date >= $1 AND transaction_date <= $2`;
+      params.push(fromDate, toDate);
+    } else if (fromDate) {
+      dateFilter = `AND transaction_date >= $1`;
+      params.push(fromDate);
+    } else if (toDate) {
+      dateFilter = `AND transaction_date <= $1`;
+      params.push(toDate);
+    } else if (period === 'daily') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '30 days'";
+    else if (period === 'weekly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '12 weeks'";
+    else if (period === 'monthly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '12 months'";
+    else if (period === 'yearly') dateFilter = "AND transaction_date >= CURRENT_DATE - INTERVAL '5 years'";
 
     // Totals for this period
     const totals = await pool.query(`
       SELECT type, COALESCE(SUM(amount), 0) as total
       FROM transactions WHERE 1=1 ${dateFilter}
       GROUP BY type
-    `);
+    `, params);
 
     let totalIncome = 0, totalExpense = 0, totalInvestment = 0;
     totals.rows.forEach(r => {
@@ -548,7 +561,7 @@ app.get("/api/finance/summary", auth, async (req, res) => {
       SELECT ${groupExpr} as period, type, COALESCE(SUM(amount), 0) as total
       FROM transactions WHERE 1=1 ${dateFilter}
       GROUP BY period, type ORDER BY period ASC
-    `);
+    `, params);
 
     const timelineMap = {};
     timeRes.rows.forEach(r => {

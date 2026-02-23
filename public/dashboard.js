@@ -149,24 +149,60 @@ document.querySelector('#addForm select[name="type"]').addEventListener('change'
 // --- Finance Summary & Charts ---
 let revenueChartInstance, investorChartInstance, profitChartInstance;
 
+// Stats + Investor widget (no chart, just numbers)
 async function loadFinanceSummary() {
-  const period = document.getElementById('timelinePeriod')?.value || 'monthly';
   try {
-    const res = await fetch(`/api/finance/summary?period=${period}`);
+    const res = await fetch('/api/finance/summary?period=all');
     const data = await res.json();
-
-    // Update stat cards
     document.getElementById('netProfit').innerText = formatMoney(data.netProfit);
     document.getElementById('companyValuation').innerText = formatMoney(data.companyValuation);
-
-    // Render all charts
-    renderRevenueChart(data.timeline);
     renderInvestorWidget(data.investors, data.companyValuation);
-    renderProfitChart(data.timeline);
   } catch (err) {
     console.error('Finance summary error:', err);
   }
 }
+
+// Independent Revenue Timeline loader
+async function loadRevenueTimeline() {
+  const period = document.getElementById('timelinePeriod')?.value || 'monthly';
+  const from = document.getElementById('timelineFrom')?.value || '';
+  const to = document.getElementById('timelineTo')?.value || '';
+  let url = `/api/finance/summary?period=${period}`;
+  if (from) url += `&from=${from}`;
+  if (to) url += `&to=${to}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    renderRevenueChart(data.timeline);
+  } catch (err) { console.error('Revenue timeline error:', err); }
+}
+
+// Independent Profit Trend loader
+async function loadProfitTrend() {
+  const period = document.getElementById('profitPeriod')?.value || 'monthly';
+  const from = document.getElementById('profitFrom')?.value || '';
+  const to = document.getElementById('profitTo')?.value || '';
+  let url = `/api/finance/summary?period=${period}`;
+  if (from) url += `&from=${from}`;
+  if (to) url += `&to=${to}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    renderProfitChart(data.timeline);
+  } catch (err) { console.error('Profit trend error:', err); }
+}
+
+const chartLineOpts = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: {
+    legend: { position: 'top', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle', font: { family: 'Outfit' } } },
+    tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', titleFont: { size: 13 }, bodyFont: { size: 13, weight: 'bold' }, padding: 12, cornerRadius: 8, callbacks: { label: c => ' ' + c.dataset.label + ': ' + formatMoney(c.raw) } }
+  },
+  scales: {
+    x: { grid: { display: false }, ticks: { font: { family: 'Outfit', size: 11 }, maxRotation: 45 } },
+    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { family: 'Outfit', size: 11 }, callback: v => '₹' + v.toLocaleString() } }
+  }
+};
 
 function renderRevenueChart(timeline) {
   const ctx = document.getElementById('revenueChart');
@@ -174,26 +210,16 @@ function renderRevenueChart(timeline) {
   if (revenueChartInstance) revenueChartInstance.destroy();
 
   revenueChartInstance = new Chart(ctx.getContext('2d'), {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: timeline.map(t => t.period),
       datasets: [
-        { label: 'Earnings', data: timeline.map(t => t.income), backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.7 },
-        { label: 'Expenses', data: timeline.map(t => t.expense), backgroundColor: '#ef4444', borderRadius: 6, barPercentage: 0.7 },
-        { label: 'Investments', data: timeline.map(t => t.investment), backgroundColor: '#8b5cf6', borderRadius: 6, barPercentage: 0.7 }
+        { label: 'Earnings', data: timeline.map(t => t.income), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', fill: true, tension: 0.3, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: '#10b981' },
+        { label: 'Expenses', data: timeline.map(t => t.expense), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, tension: 0.3, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: '#ef4444' },
+        { label: 'Investments', data: timeline.map(t => t.investment), borderColor: '#8b5cf6', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], tension: 0.3, pointRadius: 3, pointBackgroundColor: '#8b5cf6' }
       ]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle', font: { family: 'Outfit' } } },
-        tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', titleFont: { size: 13 }, bodyFont: { size: 13, weight: 'bold' }, padding: 12, cornerRadius: 8, callbacks: { label: c => ' ' + c.dataset.label + ': ' + formatMoney(c.raw) } }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { family: 'Outfit', size: 11 } } },
-        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { family: 'Outfit', size: 11 }, callback: v => '₹' + v.toLocaleString() } }
-      }
-    }
+    options: { ...chartLineOpts }
   });
 }
 
@@ -201,7 +227,6 @@ function renderInvestorWidget(investors, totalVal) {
   const ctx = document.getElementById('investorChart');
   const list = document.getElementById('investorList');
   if (!ctx || !list) return;
-
   if (investorChartInstance) investorChartInstance.destroy();
 
   const colors = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#6366f1'];
@@ -248,50 +273,25 @@ function renderProfitChart(timeline) {
   if (!ctx) return;
   if (profitChartInstance) profitChartInstance.destroy();
 
-  const netProfitData = timeline.map(t => t.income - t.expense);
-
   profitChartInstance = new Chart(ctx.getContext('2d'), {
     type: 'line',
     data: {
       labels: timeline.map(t => t.period),
       datasets: [
         {
-          label: 'Net Profit',
-          data: netProfitData,
-          borderColor: '#06b6d4',
-          backgroundColor: 'rgba(6,182,212,0.1)',
-          fill: true,
-          tension: 0.4,
-          borderWidth: 2.5,
-          pointRadius: 4,
-          pointHoverRadius: 7,
-          pointBackgroundColor: '#06b6d4'
+          label: 'Net Profit', data: timeline.map(t => t.income - t.expense),
+          borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true,
+          tension: 0.3, borderWidth: 2.5, pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#06b6d4'
         },
         {
-          label: 'Gross Profit (Earnings)',
-          data: timeline.map(t => t.income),
-          borderColor: '#10b981',
-          backgroundColor: 'transparent',
-          borderWidth: 2,
-          borderDash: [5, 5],
-          tension: 0.4,
-          pointRadius: 3,
-          pointBackgroundColor: '#10b981'
+          label: 'Gross Profit (Earnings)', data: timeline.map(t => t.income),
+          borderColor: '#10b981', backgroundColor: 'transparent',
+          borderWidth: 2, borderDash: [5, 5], tension: 0.3, pointRadius: 3, pointBackgroundColor: '#10b981'
         }
       ]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle', font: { family: 'Outfit' } } },
-        tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', padding: 12, cornerRadius: 8, callbacks: { label: c => ' ' + c.dataset.label + ': ' + formatMoney(c.raw) } }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { family: 'Outfit', size: 11 } } },
-        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { family: 'Outfit', size: 11 }, callback: v => '₹' + v.toLocaleString() } }
-      }
-    }
-  });
+    options: { ...chartLineOpts }
+  })
 }
 
 // 2. Add Transaction Form
@@ -312,47 +312,68 @@ function showTransactionDetail(category, type, amount, date, note, investor) {
 
   const typeColors = { income: 'var(--color-income)', expense: 'var(--color-expense)', investment: 'var(--color-investment)' };
   const investorRow = (type === 'investment' && investor) ? `
-    <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
-      <span style="color:var(--text-muted);font-size:14px;">Investor</span>
-      <span style="font-weight:600;color:var(--color-investment);">${investor}</span>
+    <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--border-light);">
+      <span style="color:var(--text-muted);font-size:15px;">Investor</span>
+      <span style="font-weight:600;color:var(--color-investment);font-size:15px;">${investor}</span>
     </div>` : '';
 
   const overlay = document.createElement('div');
   overlay.id = 'txDetailOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);animation:fadeIn 0.2s ease;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);';
   overlay.innerHTML = `
-    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:16px;padding:30px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-        <h3 style="margin:0;font-size:18px;">Transaction Details</h3>
-        <button onclick="document.getElementById('txDetailOverlay').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:20px;padding:40px;max-width:600px;width:calc(100% - 40px);max-height:calc(100vh - 40px);overflow-y:auto;box-shadow:0 25px 80px rgba(0,0,0,0.5);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;">
+        <h2 style="margin:0;font-size:22px;">Transaction Details</h2>
+        <button onclick="document.getElementById('txDetailOverlay').remove()" style="background:var(--bg-secondary);border:1px solid var(--border-light);color:var(--text-muted);width:36px;height:36px;border-radius:10px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
-      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
-        <span style="color:var(--text-muted);font-size:14px;">Type</span>
-        <span class="badge badge-${type}" style="font-size:13px;">${type}</span>
+
+      <div style="background:var(--bg-secondary);border-radius:16px;padding:24px;margin-bottom:24px;">
+        <div style="text-align:center;margin-bottom:8px;">
+          <span class="badge badge-${type}" style="font-size:14px;padding:6px 16px;">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="font-weight:800;font-size:36px;color:${typeColors[type] || 'var(--text-main)'};">${formatMoney(amount)}</span>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
-        <span style="color:var(--text-muted);font-size:14px;">Category</span>
-        <span style="font-weight:600;">${category}</span>
+
+      <div style="background:var(--bg-secondary);border-radius:16px;padding:4px 20px;">
+        <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--border-light);">
+          <span style="color:var(--text-muted);font-size:15px;">Category</span>
+          <span style="font-weight:600;font-size:15px;">${category}</span>
+        </div>
+        ${investorRow}
+        <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--border-light);">
+          <span style="color:var(--text-muted);font-size:15px;">Date</span>
+          <span style="font-weight:500;font-size:15px;">${formatDate(date)}</span>
+        </div>
+        ${note ? `
+        <div style="padding:16px 0;">
+          <span style="color:var(--text-muted);font-size:15px;display:block;margin-bottom:10px;">Note</span>
+          <p style="margin:0;color:var(--text-main);font-size:15px;line-height:1.7;background:var(--bg-main);padding:16px;border-radius:12px;">${note}</p>
+        </div>` : `<div style="padding:16px 0;"><span style="color:var(--text-muted);font-size:13px;font-style:italic;">No note attached</span></div>`}
       </div>
-      ${investorRow}
-      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
-        <span style="color:var(--text-muted);font-size:14px;">Amount</span>
-        <span style="font-weight:700;font-size:18px;color:${typeColors[type] || 'var(--text-main)'}">${formatMoney(amount)}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light);">
-        <span style="color:var(--text-muted);font-size:14px;">Date</span>
-        <span style="font-weight:500;">${formatDate(date)}</span>
-      </div>
-      ${note ? `
-      <div style="padding:12px 0;">
-        <span style="color:var(--text-muted);font-size:14px;display:block;margin-bottom:8px;">Note</span>
-        <p style="margin:0;color:var(--text-main);font-size:14px;line-height:1.6;background:var(--bg-secondary);padding:12px;border-radius:8px;">${note}</p>
-      </div>` : ''}
+
+      <button onclick="exportTransactionCSV('${type}', ${JSON.stringify(category).replace(/'/g, "\\'")} , ${amount}, '${date}', ${JSON.stringify(note || '').replace(/'/g, "\\'")} , ${JSON.stringify(investor || '').replace(/'/g, "\\'")})" class="btn-primary" style="margin-top:20px;width:100%;justify-content:center;padding:14px;font-size:15px;border-radius:12px;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export as CSV
+      </button>
     </div>
   `;
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
 }
+
+function exportTransactionCSV(type, category, amount, date, note, investor) {
+  const headers = ['Type', 'Category', 'Amount', 'Date', 'Note', 'Investor'];
+  const row = [type, category, amount, date, note || '', investor || ''];
+  const csv = headers.join(',') + '\n' + row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `transaction_${type}_${date}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
 document.getElementById("closeModalBtn").onclick = () => txModal.classList.remove("active");
 
 document.getElementById("addForm").onsubmit = async e => {
@@ -367,6 +388,8 @@ document.getElementById("addForm").onsubmit = async e => {
   txModal.classList.remove("active");
   load();
   loadFinanceSummary();
+  loadRevenueTimeline();
+  loadProfitTrend();
 };
 
 // 3. Secure Deletion
@@ -571,6 +594,8 @@ load();
 loadCategories();
 loadRecurringCosts();
 loadFinanceSummary();
+loadRevenueTimeline();
+loadProfitTrend();
 
 // Start 2-second heartbeat
 pollData();

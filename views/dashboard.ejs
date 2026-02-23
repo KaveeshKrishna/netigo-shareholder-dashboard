@@ -292,21 +292,28 @@
       </div>
 
       <!-- Revenue Timeline Widget -->
-      <div class="grid-stack-item" gs-id="revenue-timeline" gs-x="0" gs-y="9" gs-w="8" gs-h="5" gs-min-w="5"
-        gs-min-h="4">
+      <div class="grid-stack-item" gs-id="revenue-timeline" gs-x="0" gs-y="9" gs-w="8" gs-h="6" gs-min-w="5"
+        gs-min-h="5">
         <div class="grid-stack-item-content">
           <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
             <div class="card-header"
-              style="justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 15px; margin-bottom: 15px;">
+              style="flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 12px; gap: 8px;">
               <h3 style="margin: 0;">Revenue Timeline</h3>
-              <select id="timelinePeriod" class="btn-secondary" onchange="loadFinanceSummary()"
-                style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); font-weight: 500; padding: 6px 12px; border-radius: 8px;">
-                <option value="monthly" selected>Monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="yearly">Yearly</option>
-                <option value="daily">Daily</option>
-                <option value="all">All Time</option>
-              </select>
+              <div style="display:flex; gap: 8px; align-items: center; flex-wrap:wrap;">
+                <select id="timelinePeriod" class="btn-secondary" onchange="loadRevenueTimeline()"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); font-weight: 500; padding: 5px 10px; border-radius: 8px; font-size: 13px;">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly" selected>Monthly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="all">All Time</option>
+                </select>
+                <input type="date" id="timelineFrom" onchange="loadRevenueTimeline()"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit;">
+                <span style="color:var(--text-muted);font-size:12px;">to</span>
+                <input type="date" id="timelineTo" onchange="loadRevenueTimeline()"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit;">
+              </div>
             </div>
             <div class="chart-container" style="flex: 1; min-height: 200px;">
               <canvas id="revenueChart"></canvas>
@@ -316,7 +323,7 @@
       </div>
 
       <!-- Investor Breakdown Widget -->
-      <div class="grid-stack-item" gs-id="investors" gs-x="8" gs-y="9" gs-w="4" gs-h="5" gs-min-w="3" gs-min-h="4">
+      <div class="grid-stack-item" gs-id="investors" gs-x="8" gs-y="9" gs-w="4" gs-h="6" gs-min-w="3" gs-min-h="4">
         <div class="grid-stack-item-content">
           <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
             <div class="card-header"
@@ -333,21 +340,28 @@
         </div>
       </div>
 
-      <!-- Profit & Valuation Widget -->
-      <div class="grid-stack-item" gs-id="profit" gs-x="0" gs-y="14" gs-w="12" gs-h="5" gs-min-w="6" gs-min-h="4">
+      <!-- Profit Trend Widget -->
+      <div class="grid-stack-item" gs-id="profit" gs-x="0" gs-y="15" gs-w="12" gs-h="6" gs-min-w="6" gs-min-h="5">
         <div class="grid-stack-item-content">
           <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
             <div class="card-header"
-              style="justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 15px; margin-bottom: 15px;">
+              style="flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 12px; gap: 8px;">
               <h3 style="margin: 0;">Profit Trend</h3>
-              <select id="profitPeriod" class="btn-secondary" onchange="loadFinanceSummary()"
-                style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); font-weight: 500; padding: 6px 12px; border-radius: 8px;">
-                <option value="monthly" selected>Monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="yearly">Yearly</option>
-                <option value="daily">Daily</option>
-                <option value="all">All Time</option>
-              </select>
+              <div style="display:flex; gap: 8px; align-items: center; flex-wrap:wrap;">
+                <select id="profitPeriod" class="btn-secondary" onchange="loadProfitTrend()"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); font-weight: 500; padding: 5px 10px; border-radius: 8px; font-size: 13px;">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly" selected>Monthly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="all">All Time</option>
+                </select>
+                <input type="date" id="profitFrom" onchange="loadProfitTrend()"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit;">
+                <span style="color:var(--text-muted);font-size:12px;">to</span>
+                <input type="date" id="profitTo" onchange="loadProfitTrend()"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit;">
+              </div>
             </div>
             <div class="chart-container" style="flex: 1; min-height: 200px;">
               <canvas id="profitChart"></canvas>
