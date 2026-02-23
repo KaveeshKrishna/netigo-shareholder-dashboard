@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Netigo Updates History</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .timeline {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 0;
+        }
+
+        .timeline::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            background-color: var(--border-color);
+            top: 0;
+            bottom: 0;
+            left: 31px;
+            border-radius: 4px;
+        }
+
+        .timeline-item {
+            padding: 10px 40px 40px 80px;
+            position: relative;
+            background-color: inherit;
+            width: 100%;
+        }
+
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            right: auto;
+            background-color: var(--bg-main);
+            border: 4px solid var(--color-investment);
+            top: 15px;
+            left: 23px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .timeline-content {
+            padding: 30px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: var(--color-investment);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .update-date {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .timeline-content h3 {
+            margin-bottom: 15px;
+            color: var(--text-main);
+            font-size: 20px;
+        }
+
+        .timeline-content ul {
+            padding-left: 20px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .timeline-content li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body class="dashboard-body">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"
+        onclick="document.getElementById('sidebar').classList.remove('active')"></div>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <img src="/netigo-logo.png" alt="Netigo Logo" style="width: 40px; height: 40px; object-fit: contain;">
+            <h2>Netigo Shareholder Dashboard</h2>
+            <button class="hamburger-btn close-sidebar"
+                onclick="document.getElementById('sidebar').classList.remove('active')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="sidebar-menu">
+            <a href="/" class="menu-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Dashboard
+            </a>
+
+            <a href="/admin" class="menu-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                Admin Panel
+            </a>
+
+            <% if (user.role==='superadmin' ) { %>
+                <a href="/superadmin" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Superadmin
+                </a>
+                <% } %>
+
+                    <a href="/updates" class="menu-item active" style="margin-top: auto;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        What's New
+                    </a>
+
+                    <a href="/logout" class="menu-item logout-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        Logout
+                    </a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="topbar-header">
+                <button class="hamburger-btn" onclick="document.getElementById('sidebar').classList.add('active')">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="greeting">
+                    <h1>Update History</h1>
+                    <p>Netigo Shareholder Dashboard Changelog</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <a href="/" class="btn-secondary">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </header>
+
+        <section class="content-grid" style="display: block; margin-top: 30px;">
+            <div class="timeline">
+
+                <div class="timeline-item">
+                    <div class="timeline-content card">
+                        <span class="version-badge">Version 1.1.0</span>
+                        <span class="update-date">February 2026</span>
+                        <h3>Notes & Optimization Update</h3>
+                        <ul>
+                            <li><strong>Unified Updates Page:</strong> Moved the "What's New" modal into a dedicated,
+                                paginated historical timeline view.</li>
+                            <li><strong>Premium Branding:</strong> Polished Netigo typography credits and explicitly
+                                rebranded application to Netigo Shareholder Dashboard.</li>
+                            <li><strong>GridStack Defaults Improved:</strong> Patched the baseline Recurring Expenses
+                                widget height to guarantee parallel top-row docking with Chart module out of the box.
+                            </li>
+                            <li><strong>Anti-Ghost Rendering Patch:</strong> Eliminated `localStorage` glitches where
+                                widgets duplicated when re-rendering components using strict DOM ID binding.</li>
+                            <li><strong>Universal Notes System (Coming Soon):</strong> Scaffolded groundwork for global
+                                and personal Netigo team todo-lists across the dashboard views.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content card" style="border-color: rgba(255,255,255,0.05);">
+                        <span class="version-badge" style="background: var(--text-muted);">Version 1.0.0</span>
+                        <span class="update-date">February 2026</span>
+                        <h3>The Foundation</h3>
+                        <ul>
+                            <li><strong>Core Architecture:</strong> Initial release of the Next-Gen Shareholder view,
+                                replacing legacy PHP overhead tracking.</li>
+                            <li><strong>Role Based Access Control:</strong> Founders assigned Admin and Superadmin
+                                security groups with secure bcrypt hashing.</li>
+                            <li><strong>Drag & Drop Interface:</strong> Fully modular and responsive UI built primarily
+                                on `GridStack.js`, allowing founders to independently rearrange their workflows directly
+                                onto their browser's persistent cache.</li>
+                            <li><strong>Automated 30-Day Audit Trails:</strong> Comprehensive logging payload
+                                documenting all critical company operations automatically to keep the team aligned.</li>
+                            <li><strong>Dynamic Categories & Projections:</strong> Configurable recurring timeline
+                                filtering estimating forward-looking corporate expenses mathematically from daily to
+                                yearly intervals.</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+</body>
+
+</html>

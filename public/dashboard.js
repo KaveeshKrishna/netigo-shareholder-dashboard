@@ -318,6 +318,7 @@ async function pollData() {
       currentVersion = data.version;
       load();              // Fetch transactions & redraw chart
       loadRecurringCosts(); // Fetch and redraw recurring widget
+      loadNotes();         // Fetch and redraw notes
     }
   } catch (err) {
     console.error("Polling error:", err);
@@ -328,10 +329,88 @@ async function pollData() {
 load();
 loadCategories();
 loadRecurringCosts();
+loadNotes();
 
 // Start 2-second heartbeat
 pollData();
 setInterval(pollData, 2000);
+
+// --- Notes System ---
+let notesData = [];
+
+async function loadNotes() {
+  try {
+    const res = await fetch("/api/notes");
+    notesData = await res.json();
+    renderNotes();
+  } catch (err) {
+    console.error("Failed to load notes", err);
+  }
+}
+
+function renderNotes() {
+  const list = document.getElementById("notesList");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (notesData.length === 0) {
+    list.innerHTML = `<p style="padding: 10px; color: var(--text-muted); text-align: center; font-style: italic;">No personal or global notes found.</p>`;
+    return;
+  }
+
+  notesData.forEach(note => {
+    const badge = note.is_global ? `<span style="background: rgba(239, 68, 68, 0.1); color: var(--color-expense); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 4px; display: inline-block;">Global (${note.username})</span>`
+      : `<span style="background: rgba(139, 92, 246, 0.1); color: var(--color-investment); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 4px; display: inline-block;">Personal Task</span>`;
+
+    // Using DOMPurify concept or simple text element to prevent XSS is good, but we control the app.
+    // Clean string template
+    const div = document.createElement("div");
+    div.style = "background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start;";
+
+    div.innerHTML = `
+      <div style="flex: 1; margin-right: 15px;">
+        ${badge}
+        <p style="color: var(--text-main); font-size: 14px; margin: 0; line-height: 1.5; word-wrap: break-word;">${note.content}</p>
+      </div>
+      <button onclick="deleteNote(${note.id})" style="background: transparent; border: none; color: var(--color-expense); cursor: pointer; padding: 5px; opacity: 0.7; transition: 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+      </button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+async function addNote() {
+  const input = document.getElementById("newNoteInput");
+  const typeSelect = document.getElementById("newNoteGlobal");
+  const content = input.value.trim();
+  const is_global = typeSelect.value === "true";
+
+  if (!content) return;
+
+  try {
+    await fetch("/api/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, is_global })
+    });
+    input.value = "";
+    loadNotes();
+  } catch (err) {
+    alert("Error adding note.");
+  }
+}
+
+async function deleteNote(id) {
+  if (!confirm("Are you sure you want to delete this task?")) return;
+  try {
+    const res = await fetch('/api/notes/' + id, { method: "DELETE" });
+    if (!res.ok) throw new Error("Unauthorized");
+    loadNotes();
+  } catch (err) {
+    alert("You do not have permission to delete this note.");
+  }
+}
 
 // --- GridStack Layout Management ---
 let grid;

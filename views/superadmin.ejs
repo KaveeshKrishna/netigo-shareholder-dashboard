@@ -191,8 +191,7 @@
                 </div>
                 <% } %>
 
-                    <div class="grid-stack-item" gs-x="0"
-                        gs-y="<% if (pendingDeletions > 0) { %>6<% } else { %>4<% } %>" gs-w="12" gs-h="6" gs-min-w="6"
+                    <div class="grid-stack-item" gs-id="audit_mgmt" gs-x="0" gs-y="7" gs-w="8" gs-h="6" gs-min-w="6"
                         gs-min-h="4">
                         <div class="grid-stack-item-content">
                             <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
@@ -272,6 +271,35 @@
                                         onclick="changeAuditPage(1)">Next</button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    <!-- Notes / Todo Widget -->
+                    <div class="grid-stack-item" gs-id="notes" gs-x="8" gs-y="7" gs-w="4" gs-h="6" gs-min-w="3"
+                        gs-min-h="4">
+                        <div class="grid-stack-item-content">
+                            <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
+                                <div class="card-header"
+                                    style="justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 10px;">
+                                    <h3>Team Notes &amp; Tasks</h3>
+                                </div>
+                                <div style="flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 10px;"
+                                    id="notesList">
+                                    <!-- Injected via JS -->
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="newNoteInput" placeholder="Add a task..."
+                                        style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); font-family: inherit;">
+                                    <select id="newNoteGlobal" class="btn-secondary"
+                                        style="background: var(--bg-main); border: 1px solid var(--border-color); padding: 0 5px; color: var(--text-main);">
+                                        <option value="false">Personal</option>
+                                        <option value="true">Global</option>
+                                    </select>
+                                    <button class="btn-primary" onclick="addNote()"
+                                        style="padding: 0 10px;">Add</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
         </section>
     </main>
 
@@ -285,20 +313,17 @@
             </div>
             <div style="margin-bottom: 20px;">
                 <p style="color: var(--text-main); font-size: 16px; margin-bottom: 5px;"><strong>Company:</strong>
-                    Netigo Shareholder Dashboard</p>
-                <p style="color: var(--text-muted); font-size: 14px;"><strong>Developed and Managed By:</strong> Kaveesh
+                    Netigo</p>
+                <p style="color: var(--text-muted); font-size: 14px;"><strong>Developed and Managed by:</strong> Kaveesh
                     Krishna Pandey</p>
             </div>
 
-            <div
-                style="background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--color-investment); padding: 15px; border-radius: 8px;">
-                <h4 style="color: var(--color-investment); margin-bottom: 10px;">What's New</h4>
-                <ul style="color: var(--text-muted); font-size: 14px; padding-left: 20px; margin: 0; line-height: 1.6;">
-                    <li><strong>Drag & Drop Dashboard added:</strong> You can now use the 'Edit Dashboard Layout' button
-                        to freely move and resize widgets on any page. Your custom layout is securely saved to your
-                        local browser!</li>
-                </ul>
-            </div>
+            <a href="/updates"
+                style="display: block; background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--color-investment); padding: 15px; border-radius: 8px; text-decoration: none; transition: 0.2s;">
+                <h4 style="color: var(--color-investment); margin-bottom: 5px;">What's New →</h4>
+                <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Click here to view the full changelog
+                    and update history.</p>
+            </a>
         </div>
     </div>
 
@@ -501,6 +526,7 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             displayAuditPage(1);
+            loadNotes();
 
             // --- GridStack Layout Management ---
             grid = GridStack.init({
@@ -523,6 +549,68 @@
                 }
             });
         });
+
+        // --- Notes System ---
+        let notesData = [];
+        async function loadNotes() {
+            try {
+                const res = await fetch("/api/notes");
+                notesData = await res.json();
+                renderNotes();
+            } catch (err) { }
+        }
+        function renderNotes() {
+            const list = document.getElementById("notesList");
+            if (!list) return;
+            list.innerHTML = "";
+            if (notesData.length === 0) {
+                list.innerHTML = `<p style="padding: 10px; color: var(--text-muted); text-align: center; font-style: italic;">No personal or global notes found.</p>`;
+                return;
+            }
+            notesData.forEach(note => {
+                const badge = note.is_global ? `<span style="background: rgba(239, 68, 68, 0.1); color: var(--color-expense); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 4px; display: inline-block;">Global (${note.username})</span>`
+                    : `<span style="background: rgba(139, 92, 246, 0.1); color: var(--color-investment); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 4px; display: inline-block;">Personal Task</span>`;
+                const div = document.createElement("div");
+                div.style = "background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start;";
+                div.innerHTML = `
+                <div style="flex: 1; margin-right: 15px;">
+                    ${badge}
+                    <p style="color: var(--text-main); font-size: 14px; margin: 0; line-height: 1.5; word-wrap: break-word;">${note.content}</p>
+                </div>
+                <button onclick="deleteNote(${note.id})" style="background: transparent; border: none; color: var(--color-expense); cursor: pointer; padding: 5px; opacity: 0.7; transition: 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+                </button>
+                `;
+                list.appendChild(div);
+            });
+        }
+        async function addNote() {
+            const input = document.getElementById("newNoteInput");
+            const typeSelect = document.getElementById("newNoteGlobal");
+            const content = input.value.trim();
+            const is_global = typeSelect.value === "true";
+            if (!content) return;
+            try {
+                await fetch("/api/notes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content, is_global })
+                });
+                input.value = "";
+                loadNotes();
+            } catch (err) { }
+        }
+        async function deleteNote(id) {
+            if (!confirm("Are you sure you want to delete this task?")) return;
+            try {
+                const res = await fetch('/api/notes/' + id, { method: "DELETE" });
+                if (!res.ok) throw new Error("Unauthorized");
+                loadNotes();
+            } catch (err) {
+                alert("You do not have permission to delete this note.");
+            }
+        }
+        setInterval(loadNotes, 5000);
 
         let grid;
         function saveGrid() {

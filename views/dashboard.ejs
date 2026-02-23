@@ -219,7 +219,7 @@
       </div>
 
       <!-- Recent Transactions Widget -->
-      <div class="grid-stack-item" gs-id="recent" gs-x="0" gs-y="5" gs-w="12" gs-h="4" gs-min-w="5" gs-min-h="3">
+      <div class="grid-stack-item" gs-id="recent" gs-x="0" gs-y="5" gs-w="8" gs-h="4" gs-min-w="5" gs-min-h="3">
         <div class="grid-stack-item-content">
           <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
             <div class="card-header">
@@ -240,6 +240,33 @@
                   <!-- Injected via JS -->
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes / Todo Widget -->
+      <div class="grid-stack-item" gs-id="notes" gs-x="8" gs-y="5" gs-w="4" gs-h="4" gs-min-w="3" gs-min-h="4">
+        <div class="grid-stack-item-content">
+          <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
+            <div class="card-header"
+              style="justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 10px;">
+              <h3>Team Notes &amp; Tasks</h3>
+            </div>
+
+            <div style="flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 10px;" id="notesList">
+              <!-- Injected via JS -->
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="newNoteInput" placeholder="Add a new task..."
+                style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); font-family: inherit;">
+              <select id="newNoteGlobal" class="btn-secondary"
+                style="background: var(--bg-main); border: 1px solid var(--border-color); padding: 0 10px; color: var(--text-main);">
+                <option value="false">Personal</option>
+                <option value="true">Global</option>
+              </select>
+              <button class="btn-primary" onclick="addNote()" style="padding: 0 15px;">Add</button>
             </div>
           </div>
         </div>
@@ -319,20 +346,17 @@
           onclick="document.getElementById('aboutModal').classList.remove('active')">✕</button>
       </div>
       <div style="margin-bottom: 20px;">
-        <p style="color: var(--text-main); font-size: 16px; margin-bottom: 5px;"><strong>Company:</strong> Netigo
-          Shareholder Dashboard</p>
-        <p style="color: var(--text-muted); font-size: 14px;"><strong>Developed and Managed By:</strong> Kaveesh Krishna
+        <p style="color: var(--text-main); font-size: 16px; margin-bottom: 5px;"><strong>Company:</strong> Netigo</p>
+        <p style="color: var(--text-muted); font-size: 14px;"><strong>Developed and Managed by:</strong> Kaveesh Krishna
           Pandey</p>
       </div>
 
-      <div
-        style="background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--color-investment); padding: 15px; border-radius: 8px;">
-        <h4 style="color: var(--color-investment); margin-bottom: 10px;">What's New</h4>
-        <ul style="color: var(--text-muted); font-size: 14px; padding-left: 20px; margin: 0; line-height: 1.6;">
-          <li><strong>Drag & Drop Dashboard added:</strong> You can now use the 'Edit Dashboard Layout' button to freely
-            move and resize widgets on any page. Your custom layout is securely saved to your local browser!</li>
-        </ul>
-      </div>
+      <a href="/updates"
+        style="display: block; background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--color-investment); padding: 15px; border-radius: 8px; text-decoration: none; transition: 0.2s;">
+        <h4 style="color: var(--color-investment); margin-bottom: 5px;">What's New →</h4>
+        <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Click here to view the full changelog and
+          update history.</p>
+      </a>
     </div>
   </div>
 

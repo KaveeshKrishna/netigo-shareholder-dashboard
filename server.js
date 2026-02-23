@@ -88,6 +88,16 @@ async function initDb() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        is_global BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Auto-create founders
     const usersCount = await pool.query("SELECT COUNT(*) FROM users");
     if (parseInt(usersCount.rows[0].count) === 0) {
@@ -187,6 +197,56 @@ app.get("/logout", async (req, res) => {
 // ---------- DASHBOARD ROUTES ----------
 app.get("/", auth, (req, res) => {
   res.render("dashboard", { user: req.user });
+});
+
+app.get("/updates", auth, (req, res) => {
+  res.render("updates", { user: req.user });
+});
+
+// ---------- NOTES API ----------
+app.get("/api/notes", auth, async (req, res) => {
+  try {
+    const query = `
+      SELECT n.*, u.username 
+      FROM notes n 
+      JOIN users u ON n.user_id = u.id 
+      WHERE n.user_id = $1 OR n.is_global = true 
+      ORDER BY n.created_at DESC
+    `;
+    const result = await pool.query(query, [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch notes" });
+  }
+});
+
+app.post("/api/notes", auth, async (req, res) => {
+  const { content, is_global } = req.body;
+  if (!content) return res.status(400).json({ error: "Content is required" });
+
+  try {
+    await pool.query(
+      "INSERT INTO notes (user_id, content, is_global) VALUES ($1, $2, $3)",
+      [req.user.id, content, is_global === true || is_global === 'true']
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to add note" });
+  }
+});
+
+app.delete("/api/notes/:id", auth, async (req, res) => {
+  try {
+    if (req.user.role === 'superadmin') {
+      await pool.query("DELETE FROM notes WHERE id = $1", [req.params.id]);
+    } else {
+      const result = await pool.query("DELETE FROM notes WHERE id = $1 AND user_id = $2", [req.params.id, req.user.id]);
+      if (result.rowCount === 0) return res.status(403).json({ error: "Unauthorized to delete this note" });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete note" });
+  }
 });
 
 // ---------- API ROUTES ----------
