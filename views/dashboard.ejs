@@ -266,6 +266,36 @@
         </div>
       </div>
 
+      <!-- WHMCS Orders Widget -->
+      <div class="grid-stack-item" gs-id="whmcs-orders" gs-x="0" gs-y="9" gs-w="8" gs-h="4" gs-min-w="5" gs-min-h="3">
+        <div class="grid-stack-item-content">
+          <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
+            <div class="card-header" style="justify-content: space-between;">
+              <h3 style="display:flex; align-items:center; gap:8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-income)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                WHMCS Paid Orders
+              </h3>
+              <span style="font-size:12px; color:var(--text-muted); background:var(--bg-secondary); padding:4px 10px; border-radius:12px;">Auto-Synced</span>
+            </div>
+            <div class="table-container" style="flex: 1;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Invoice Detail</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="whmcsTable">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Notes / Todo Widget -->
       <div class="grid-stack-item" gs-id="notes" gs-x="8" gs-y="5" gs-w="4" gs-h="4" gs-min-w="3" gs-min-h="4"
         style="position:relative;">

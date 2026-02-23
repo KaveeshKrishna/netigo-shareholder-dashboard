@@ -5,8 +5,25 @@ const formatMoney = (amount) => "₹" + parseFloat(amount).toLocaleString('en-IN
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
 
 // Load Data
-async function load() {
-  const res = await fetch("/api/transactions");
+let _whmcsCache = null;
+let _whmcsPromise = null;
+async function fetchWHMCSData(force = false) {
+  if (force) { _whmcsCache = null; _whmcsPromise = null; }
+  if (_whmcsCache) return _whmcsCache;
+  if (_whmcsPromise) return _whmcsPromise;
+
+  _whmcsPromise = fetch("/api/whmcs-transactions")
+    .then(res => res.ok ? res.json() : [])
+    .then(data => { _whmcsCache = data; _whmcsPromise = null; return data; })
+    .catch(() => { _whmcsPromise = null; return []; });
+  return _whmcsPromise;
+}
+
+async function load(forceWHMCS = false) {
+  const [res, whmcsData] = await Promise.all([
+    fetch("/api/transactions"),
+    fetchWHMCSData(forceWHMCS)
+  ]);
   const data = await res.json();
 
   let income = 0, expense = 0, investment = 0;
@@ -50,6 +67,10 @@ async function load() {
       </tr>`;
   });
 
+  whmcsData.forEach(t => {
+    income += parseFloat(t.amount) || 0;
+  });
+
   const balance = income + investment - expense;
 
   document.getElementById("income").innerText = formatMoney(income);
@@ -58,6 +79,38 @@ async function load() {
   document.getElementById("balance").innerText = formatMoney(balance);
 
   updateChart([investment, income, expense]);
+}
+
+async function loadWHMCSOrders() {
+  const table = document.getElementById("whmcsTable");
+  if (!table) return;
+
+  table.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Syncing from WHMCS...</td></tr>`;
+
+  try {
+    const data = await fetchWHMCSData();
+
+    if (!data.length) {
+      table.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">No synchronized orders found.</td></tr>`;
+      return;
+    }
+
+    table.innerHTML = "";
+    data.forEach(t => {
+      const safeNote = JSON.stringify(t.note || '').replace(/"/g, '&quot;');
+      const safeCategory = JSON.stringify(t.category).replace(/"/g, '&quot;');
+
+      table.innerHTML += `
+        <tr style="cursor:pointer;" onclick="showTransactionDetail(${safeCategory}, '${t.type}', ${t.amount}, '${t.transaction_date || t.created_at}', ${safeNote}, null)">
+          <td><strong>${t.category}</strong></td>
+          <td><small style="color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;display:inline-block;vertical-align:bottom;">${t.note}</small></td>
+          <td style="font-weight: 600; color:var(--color-income);">${formatMoney(t.amount)}</td>
+          <td>${formatDate(t.transaction_date || t.created_at)}</td>
+        </tr>`;
+    });
+  } catch (err) {
+    table.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--color-expense);">Failed to sync with WHMCS instance.</td></tr>`;
+  }
 }
 
 function updateChart(dataValues) {
@@ -156,12 +209,17 @@ let revenueChartInstance, investorChartInstance, profitChartInstance;
 // Stats + Investor widget (no chart, just numbers)
 async function loadFinanceSummary() {
   try {
-    const [finRes, invRes] = await Promise.all([
+    const [finRes, invRes, whmcsData] = await Promise.all([
       fetch('/api/finance/summary?period=all'),
-      fetch('/api/investors')
+      fetch('/api/investors'),
+      fetchWHMCSData()
     ]);
     const finData = await finRes.json();
     const invData = await invRes.json();
+
+    const whmcsIncome = whmcsData.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+    finData.netProfit += whmcsIncome;
+
     document.getElementById('netProfit').innerText = formatMoney(finData.netProfit);
     document.getElementById('companyValuation').innerText = formatMoney(finData.companyValuation);
     renderInvestorWidget(invData.investors || [], finData.companyValuation, finData.netProfit, invData.companySavingsPct || 0);
@@ -1063,7 +1121,8 @@ async function pollData() {
     const data = await res.json();
     if (data.version > currentVersion) {
       currentVersion = data.version;
-      load();              // Fetch transactions & redraw chart
+      load(true);          // Fetch transactions & force WHMCS refresh
+      loadWHMCSOrders();   // Fetch WHMCS orders
       loadRecurringCosts(); // Fetch and redraw recurring widget
       loadNotes();         // Fetch and redraw notes
       loadFinanceSummary(); // Refresh stat cards
@@ -1077,6 +1136,7 @@ async function pollData() {
 
 // Initial direct loads
 load();
+loadWHMCSOrders();
 loadCategories();
 loadRecurringCosts();
 loadFinanceSummary();

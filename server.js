@@ -346,6 +346,63 @@ app.get("/api/transactions", auth, async (req, res) => {
   }
 });
 
+app.get("/api/whmcs-transactions", auth, async (req, res) => {
+  try {
+    const url = process.env.WHMCS_URL || process.env.WHMCS_API;
+    const identifier = process.env.WHMCS_IDENTIFIER;
+    const secret = process.env.WHMCS_SECRET;
+
+    console.log("--- WHMCS API Check ---");
+    console.log("URL exists?", !!url, url);
+    console.log("Identifier exists?", !!identifier);
+    console.log("Secret exists?", !!secret);
+
+    if (!url || !identifier || !secret) {
+      console.log("Missing credentials! Aborting API call.");
+      return res.json([]);
+    }
+
+    const params = new URLSearchParams({
+      action: 'GetInvoices',
+      identifier: identifier,
+      secret: secret,
+      responsetype: 'json',
+      limitnum: '99999',
+      status: 'Paid'
+    });
+
+    console.log("Making fetch request to:", url + '?' + params.toString().replace(secret, '***HIDDEN***'));
+    const whmcsRes = await fetch(url + '?' + params.toString());
+    const data = await whmcsRes.json();
+    console.log("Response received from WHMCS. Result:", data.result);
+
+    if (data.result !== 'success') {
+      console.error("WHMCS API Error:", data.message);
+      return res.json([]);
+    }
+
+    const invoices = data.invoices?.invoice || [];
+
+    const formatted = invoices
+      .filter(i => i.status === 'Paid' && parseFloat(i.total) > 0)
+      .map(i => ({
+        id: `whmcs_invoice_${i.id}`,
+        type: 'income',
+        category: `WHMCS Client #${i.userid}`,
+        investor_name: null,
+        amount: parseFloat(i.total),
+        transaction_date: i.datepaid || i.date,
+        note: `WHMCS Paid Invoice #${i.invoicenum || i.id}`,
+        is_whmcs: true
+      }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error("Failed to fetch WHMCS transactions:", err);
+    res.status(500).json({ error: "Failed to fetch WHMCS transactions" });
+  }
+});
+
 app.post("/api/add", auth, async (req, res) => {
   const { type, category, amount, note, date, investor_name } = req.body;
   try {
