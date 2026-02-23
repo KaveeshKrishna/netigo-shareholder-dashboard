@@ -601,9 +601,12 @@ async function loadRevenueTimeline() {
   if (from) url += `&from=${from}`;
   if (to) url += `&to=${to}`;
   try {
-    const res = await fetch(url);
+    const [res, whmcsData] = await Promise.all([
+      fetch(url),
+      fetchWHMCSData()
+    ]);
     const data = await res.json();
-    const bucketed = generateBuckets(data.timeline, data.startDate, data.endDate, period);
+    const bucketed = generateBuckets(data.timeline, data.startDate, data.endDate, period, whmcsData);
     renderRevenueChart(bucketed);
   } catch (err) { console.error('Revenue timeline error:', err); }
 }
@@ -617,14 +620,17 @@ async function loadProfitTrend() {
   if (from) url += `&from=${from}`;
   if (to) url += `&to=${to}`;
   try {
-    const res = await fetch(url);
+    const [res, whmcsData] = await Promise.all([
+      fetch(url),
+      fetchWHMCSData()
+    ]);
     const data = await res.json();
-    const bucketed = generateBuckets(data.timeline, data.startDate, data.endDate, period);
+    const bucketed = generateBuckets(data.timeline, data.startDate, data.endDate, period, whmcsData);
     renderProfitChart(bucketed);
   } catch (err) { console.error('Profit trend error:', err); }
 }
 
-function generateBuckets(timeline, startDateStr, endDateStr, period) {
+function generateBuckets(timeline, startDateStr, endDateStr, period, whmcsData = []) {
   const buckets = [];
   let curr = new Date(startDateStr + 'T00:00:00');
   const end = new Date(endDateStr + 'T00:00:00');
@@ -678,6 +684,15 @@ function generateBuckets(timeline, startDateStr, endDateStr, period) {
     }
   });
 
+  // Map WHMCS data into exact buckets
+  whmcsData.forEach(t => {
+    const wDate = new Date((t.transaction_date || t.date || '').split(' ')[0] + 'T00:00:00');
+    const bucket = buckets.find(b => wDate >= b.start && wDate < b.end);
+    if (bucket) {
+      bucket.income += (parseFloat(t.amount) || 0);
+    }
+  });
+
   return buckets;
 }
 
@@ -726,12 +741,12 @@ function renderProfitChart(timeline) {
       labels: timeline.map(t => t.period),
       datasets: [
         {
-          label: 'Net Profit', data: timeline.map(t => t.income - t.expense),
+          label: 'Gross Profit', data: timeline.map(t => t.income),
           borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true,
           tension: 0.3, borderWidth: 2.5, pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: '#06b6d4'
         },
         {
-          label: 'Gross Profit (Earnings)', data: timeline.map(t => t.income),
+          label: 'Net Profit', data: timeline.map(t => t.income - t.expense),
           borderColor: '#10b981', backgroundColor: 'transparent',
           borderWidth: 2, borderDash: [5, 5], tension: 0.3, pointRadius: 3, pointBackgroundColor: '#10b981'
         }
