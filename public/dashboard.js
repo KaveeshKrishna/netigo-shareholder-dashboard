@@ -173,7 +173,8 @@ async function loadRevenueTimeline() {
   try {
     const res = await fetch(url);
     const data = await res.json();
-    renderRevenueChart(data.timeline);
+    const bucketed = generateBuckets(data.timeline, data.startDate, data.endDate, period);
+    renderRevenueChart(bucketed);
   } catch (err) { console.error('Revenue timeline error:', err); }
 }
 
@@ -188,8 +189,66 @@ async function loadProfitTrend() {
   try {
     const res = await fetch(url);
     const data = await res.json();
-    renderProfitChart(data.timeline);
+    const bucketed = generateBuckets(data.timeline, data.startDate, data.endDate, period);
+    renderProfitChart(bucketed);
   } catch (err) { console.error('Profit trend error:', err); }
+}
+
+function generateBuckets(timeline, startDateStr, endDateStr, period) {
+  const buckets = [];
+  let curr = new Date(startDateStr + 'T00:00:00');
+  const end = new Date(endDateStr + 'T00:00:00');
+  if (period === 'all') period = 'monthly';
+  const fDate = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  while (curr <= end) {
+    let next = new Date(curr);
+    let label = '';
+
+    if (period === 'daily') {
+      next.setDate(curr.getDate() + 1);
+      label = fDate(curr);
+    } else if (period === 'weekly') {
+      next.setDate(curr.getDate() + 7);
+      const toDate = new Date(next);
+      toDate.setDate(toDate.getDate() - 1);
+      if (toDate > end) toDate.setTime(end.getTime());
+      label = fDate(curr) + ' - ' + fDate(toDate);
+    } else if (period === 'monthly') {
+      next.setMonth(curr.getMonth() + 1);
+      const toDate = new Date(next);
+      toDate.setDate(toDate.getDate() - 1);
+      if (toDate > end) toDate.setTime(end.getTime());
+      label = fDate(curr) + ' - ' + fDate(toDate);
+    } else if (period === 'yearly') {
+      next.setFullYear(curr.getFullYear() + 1);
+      const toDate = new Date(next);
+      toDate.setDate(toDate.getDate() - 1);
+      if (toDate > end) toDate.setTime(end.getTime());
+      label = curr.getFullYear() + (curr.getFullYear() !== toDate.getFullYear() ? '-' + toDate.getFullYear().toString().slice(-2) : '');
+    }
+
+    buckets.push({
+      start: new Date(curr),
+      end: new Date(next),
+      period: label,
+      income: 0, expense: 0, investment: 0
+    });
+    curr = next;
+  }
+
+  // Map daily data into exact buckets
+  timeline.forEach(t => {
+    const tDate = new Date(t.date + 'T00:00:00');
+    const bucket = buckets.find(b => tDate >= b.start && tDate < b.end);
+    if (bucket) {
+      bucket.income += t.income;
+      bucket.expense += t.expense;
+      bucket.investment += t.investment;
+    }
+  });
+
+  return buckets;
 }
 
 const chartLineOpts = {

@@ -551,26 +551,37 @@ app.get("/api/finance/summary", auth, async (req, res) => {
       return { name: r.investor_name, invested, share: Math.round(share * 100) / 100, profitShare: Math.round(profitShare * 100) / 100 };
     });
 
-    // Timeline data (grouped by period)
-    let groupExpr = "TO_CHAR(transaction_date, 'YYYY-MM')";
-    if (period === 'daily') groupExpr = "TO_CHAR(transaction_date, 'YYYY-MM-DD')";
-    else if (period === 'weekly') groupExpr = "TO_CHAR(transaction_date, 'IYYY-IW')";
-    else if (period === 'yearly') groupExpr = "TO_CHAR(transaction_date, 'YYYY')";
-
+    // Timeline data (always daily, frontend handles bucketing)
     const timeRes = await pool.query(`
-      SELECT ${groupExpr} as period, type, COALESCE(SUM(amount), 0) as total
+      SELECT TO_CHAR(transaction_date, 'YYYY-MM-DD') as date, type, COALESCE(SUM(amount), 0) as total
       FROM transactions WHERE 1=1 ${dateFilter}
-      GROUP BY period, type ORDER BY period ASC
+      GROUP BY date, type ORDER BY date ASC
     `, params);
 
     const timelineMap = {};
     timeRes.rows.forEach(r => {
-      if (!timelineMap[r.period]) timelineMap[r.period] = { period: r.period, income: 0, expense: 0, investment: 0 };
-      timelineMap[r.period][r.type] = parseFloat(r.total);
+      if (!timelineMap[r.date]) timelineMap[r.date] = { date: r.date, income: 0, expense: 0, investment: 0 };
+      timelineMap[r.date][r.type] = parseFloat(r.total);
     });
     const timeline = Object.values(timelineMap);
 
-    res.json({ totalIncome, totalExpense, totalInvestment, grossProfit, netProfit, companyValuation, investors, timeline });
+    // Determine exact bounds for the frontend to pad zeros
+    let startDate = fromDate;
+    let endDate = toDate;
+
+    if (!startDate || !endDate) {
+      if (period === 'daily') { startDate = startDate || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
+      else if (period === 'weekly') { startDate = startDate || new Date(Date.now() - 12 * 7 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
+      else if (period === 'monthly') { startDate = startDate || new Date(Date.now() - 365 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
+      else if (period === 'yearly') { startDate = startDate || new Date(Date.now() - 5 * 365 * 86400000).toISOString().split('T')[0]; endDate = endDate || new Date().toISOString().split('T')[0]; }
+      else {
+        // all time
+        if (timeline.length > 0) startDate = timeline[0].date;
+        endDate = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    res.json({ totalIncome, totalExpense, totalInvestment, grossProfit, netProfit, companyValuation, investors, timeline, startDate, endDate });
   } catch (error) {
     console.error("Finance summary error:", error);
     res.status(500).json({ error: "Failed to compute finance summary" });
