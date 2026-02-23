@@ -188,6 +188,43 @@
 
                 <div class="timeline-item">
                     <div class="timeline-content card">
+                        <span class="version-badge">Version 1.3.0</span>
+                        <span class="update-date">February 2026</span>
+                        <h3>Advanced Notes & Task Management</h3>
+                        <ul>
+                            <li><strong>Separate Tiles:</strong> Notes can now be split into dedicated GridStack tiles
+                                for Personal Tasks, Global Tasks, and Completed Archive. Use the green
+                                <strong>+</strong> button on the notes tile (visible in Edit Layout mode) to add up to 2
+                                separate tiles. Each split tile is a full-featured widget with its own task list and Add
+                                Task button.
+                            </li>
+                            <li><strong>Dynamic Dropdown:</strong> The stacked notes tile automatically adjusts its
+                                dropdown &mdash; when a category is split into its own tile, it's removed from the
+                                dropdown. Categories return when the split tile is deleted.</li>
+                            <li><strong>Global Tasks First:</strong> The default tab order now prioritizes Global Tasks
+                                across all views (Dashboard, Admin, Superadmin).</li>
+                            <li><strong>Delete Completed Tasks:</strong> Each completed task now has a 🗑 delete button
+                                to permanently remove it. A "Delete All" button wipes the entire completed archive in
+                                one click.</li>
+                            <li><strong>Completed Archive Filter:</strong> Filter completed tasks by All, Personal, or
+                                Global using a dropdown in the completed section.</li>
+                            <li><strong>30-Day Auto-Cleanup:</strong> Completed tasks older than 30 days are
+                                automatically deleted server-side every hour.</li>
+                            <li><strong>Smooth Animations:</strong> Fixed the disappear/reappear glitch on task
+                                completion. Tasks now smoothly fade out with CSS animations, guarded by an
+                                <code>isAnimating</code> flag that blocks auto-refresh during transitions.
+                            </li>
+                            <li><strong>Radio Button Hover Effects:</strong> Task radio buttons now glow green and scale
+                                up on hover for better visual feedback.</li>
+                            <li><strong>Crash-Safe Storage:</strong> All localStorage reads (grid layout, split tiles)
+                                are wrapped in try-catch with validation to prevent page crashes from corrupted data.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content card">
                         <span class="version-badge">Version 1.2.0</span>
                         <span class="update-date">February 2026</span>
                         <h3>UI & UX Polishing</h3>
