@@ -894,6 +894,7 @@ select option {
   outline: none;
   cursor: pointer;
 }
+
 .note-item {
   display: flex !important;
   align-items: center !important;
@@ -914,32 +915,36 @@ select option {
 }
 
 .note-item input[type='radio'] {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  max-width: 12px !important;
+  min-height: 12px !important;
+  max-height: 12px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
   border: 2px solid var(--color-income) !important;
   border-radius: 50% !important;
   outline: none !important;
   cursor: pointer !important;
   background: transparent !important;
   transition: all 0.2s ease !important;
-  position: relative !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  margin: 0 !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
 }
 
 .note-item input[type='radio']:hover {
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4) !important;
 }
 
 .note-item input[type='radio']:checked {
   background: var(--color-income) !important;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6) !important;
-  border-color: transparent !important;
+  border-color: var(--color-income) !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5) !important;
 }
 
 .note-item input[type='radio']:checked::after {
