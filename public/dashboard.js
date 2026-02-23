@@ -334,6 +334,7 @@ loadNotes();
 // Start 2-second heartbeat
 pollData();
 setInterval(pollData, 2000);
+setInterval(loadNotes, 2000);
 
 // --- Notes System ---
 let notesData = [];
