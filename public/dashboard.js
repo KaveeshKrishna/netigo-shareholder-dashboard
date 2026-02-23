@@ -329,12 +329,10 @@ async function pollData() {
 load();
 loadCategories();
 loadRecurringCosts();
-loadNotes();
 
 // Start 2-second heartbeat
 pollData();
 setInterval(pollData, 2000);
-setInterval(loadNotes, 2000);
 
 // --- Notes System ---
 let notesData = [];
@@ -518,6 +516,10 @@ function renderNotesForContainer(containerId, category, isSplitTile) {
     list.appendChild(div);
   });
 }
+
+// Boot notes system (must be after all declarations above)
+loadNotes();
+setInterval(loadNotes, 2000);
 
 function openAddTaskModal() {
   document.getElementById('addTaskModal').classList.add('active');
