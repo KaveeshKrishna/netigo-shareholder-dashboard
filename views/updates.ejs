@@ -174,13 +174,35 @@
             </div>
             <div class="topbar-actions">
                 <a href="/" class="btn-secondary">
-                    ← Back to Dashboard
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Back to Dashboard
                 </a>
             </div>
         </header>
 
         <section class="content-grid" style="display: block; margin-top: 30px;">
             <div class="timeline">
+
+                <div class="timeline-item">
+                    <div class="timeline-content card">
+                        <span class="version-badge">Version 1.2.0</span>
+                        <span class="update-date">February 2026</span>
+                        <h3>UI & UX Polishing</h3>
+                        <ul>
+                            <li><strong>Dropdown Overhaul:</strong> Replaced flat native &lt;select&gt; selectors across
+                                the dashboard (Recurring Costs, Notes) with custom styled SVG chevrons for improved
+                                interactivity.</li>
+                            <li><strong>Button Standardization:</strong> Remapped the auxiliary navigation links on the
+                                Updates page to inherit standardized `.btn-secondary` padding, hover boundaries, and
+                                flexbox alignment.</li>
+                            <li><strong>Notes Verification:</strong> Team Notes &amp; Tasks fully integrated into
+                                GridStack.</li>
+                        </ul>
+                    </div>
+                </div>
 
                 <div class="timeline-item">
                     <div class="timeline-content card">
