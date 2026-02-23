@@ -105,7 +105,7 @@
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          Export CSV
+          Export Transactions
         </a>
         <button class="btn-primary" id="openModalBtn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -238,18 +238,8 @@
       <div class="grid-stack-item" gs-id="recent" gs-x="0" gs-y="5" gs-w="8" gs-h="4" gs-min-w="5" gs-min-h="3">
         <div class="grid-stack-item-content">
           <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
-            <div class="card-header" style="justify-content: space-between; align-items: center; padding-bottom: 12px;">
-              <h3 style="margin: 0;">Recent Transactions</h3>
-              <button class="btn-secondary" onclick="exportRecentTransactionsCSV()"
-                title="Export all recent transactions"
-                style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); font-weight: 500; padding: 5px 12px; border-radius: 8px; font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Export
-              </button>
+            <div class="card-header">
+              <h3>Recent Transactions</h3>
             </div>
             <div class="table-container" style="flex: 1;">
               <table class="data-table">

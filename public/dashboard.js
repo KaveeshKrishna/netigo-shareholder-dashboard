@@ -432,41 +432,6 @@ function exportTransactionCSV(type, category, amount, date, note, investor) {
   a.href = url; a.download = `transaction_${type}_${date}.csv`; a.click();
   URL.revokeObjectURL(url);
 }
-
-async function exportRecentTransactionsCSV() {
-  try {
-    const res = await fetch("/api/transactions");
-    const data = await res.json();
-
-    if (!data || data.length === 0) {
-      alert("No transactions to export.");
-      return;
-    }
-
-    const headers = ['Type', 'Category', 'Amount', 'Date', 'Note', 'Investor'];
-    const rows = data.map(t => {
-      const type = t.type || '';
-      const category = t.category || '';
-      const amount = t.amount || 0;
-      const date = t.transaction_date || t.created_at || '';
-      const note = t.note || '';
-      const investor = t.investor_name || '';
-      return [type, category, amount, date, note, investor].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
-    });
-
-    const csvDate = new Date().toISOString().split('T')[0];
-    const csv = headers.join(',') + '\n' + rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `all_transactions_${csvDate}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("Failed to export complete transactions CSV:", error);
-    alert("Failed to export CSV. Please try again.");
-  }
-}
-
 document.getElementById("closeModalBtn").onclick = () => txModal.classList.remove("active");
 
 document.getElementById("addForm").onsubmit = async e => {

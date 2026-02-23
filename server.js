@@ -361,14 +361,15 @@ app.get("/api/export", auth, async (req, res) => {
     }
 
     // Quick manual CSV generation for simplicity
-    let csv = "ID,Type,Category,Amount,Note,Date\n";
+    let csv = "ID,Type,Category,Amount,Note,Investor,Date\n";
     result.rows.forEach(row => {
       const d = new Date(row.transaction_date || row.created_at);
       const dateStr = d.toISOString().split('T')[0];
       const safeNote = row.note ? `"${row.note.replace(/"/g, '""')}"` : "";
+      const safeInvestor = row.investor_name ? `"${row.investor_name.replace(/"/g, '""')}"` : "";
 
       // Wrapping date in ="..." forces Excel to treat it as string bypassing the ###### width auto-formatting bug
-      csv += `${row.id},${row.type},"${row.category}",${row.amount},${safeNote},="${dateStr}"\n`;
+      csv += `${row.id},${row.type},"${row.category}",${row.amount},${safeNote},${safeInvestor},="${dateStr}"\n`;
     });
 
     res.header('Content-Type', 'text/csv');
