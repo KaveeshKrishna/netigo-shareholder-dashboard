@@ -450,50 +450,8 @@ function renderRevenueChart(timeline) {
   });
 }
 
-function renderInvestorWidget(investors, totalVal) {
-  const ctx = document.getElementById('investorChart');
-  const list = document.getElementById('investorList');
-  if (!ctx || !list) return;
-  if (investorChartInstance) investorChartInstance.destroy();
 
-  const colors = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#6366f1'];
 
-  if (investors.length === 0) {
-    list.innerHTML = '<p style="color:var(--text-muted);text-align:center;font-size:13px;padding:20px;">No investor data yet. Add investments with investor names.</p>';
-    return;
-  }
-
-  investorChartInstance = new Chart(ctx.getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels: investors.map(i => i.name),
-      datasets: [{ data: investors.map(i => i.invested), backgroundColor: colors.slice(0, investors.length), borderWidth: 0, hoverOffset: 8 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '70%',
-      plugins: {
-        legend: { display: false },
-        tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', padding: 10, cornerRadius: 8, callbacks: { label: c => ' ' + c.label + ': ' + formatMoney(c.raw) + ' (' + investors[c.dataIndex].share + '%)' } }
-      }
-    }
-  });
-
-  list.innerHTML = investors.map((inv, i) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border-light);gap:10px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]};flex-shrink:0;"></div>
-        <div>
-          <p style="margin:0;font-weight:600;font-size:14px;color:var(--text-main);">${inv.name}</p>
-          <p style="margin:0;font-size:11px;color:var(--text-muted);">${inv.share}% ownership</p>
-        </div>
-      </div>
-      <div style="text-align:right;">
-        <p style="margin:0;font-weight:600;font-size:13px;color:var(--color-investment);">${formatMoney(inv.invested)}</p>
-        <p style="margin:0;font-size:11px;color:${inv.profitShare >= 0 ? 'var(--color-income)' : 'var(--color-expense)'};">Profit: ${formatMoney(inv.profitShare)}</p>
-      </div>
-    </div>
-  `).join('');
-}
 
 function renderProfitChart(timeline) {
   const ctx = document.getElementById('profitChart');
