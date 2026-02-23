@@ -254,9 +254,10 @@ body {
 }
 
 .sidebar-logo h2 {
-  font-size: 24px;
+  font-size: 18px;
+  line-height: 1.2;
   letter-spacing: -0.5px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .sidebar-menu {
@@ -1073,20 +1074,21 @@ select option {
   display: none !important;
 }
 
-#notesList::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
-#notesList::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.1);
   border-radius: 10px;
 }
 
-#notesList::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
 }
 
-#notesList::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }

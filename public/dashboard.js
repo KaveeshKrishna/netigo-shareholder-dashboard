@@ -22,9 +22,9 @@ async function load() {
     const investorLabel = (t.type === 'investment' && t.investor_name) ? `<br><small style="color:var(--color-investment);font-weight:500;">by ${t.investor_name}</small>` : '';
     const noteText = t.note || '';
     const truncatedNote = noteText.length > 40 ? noteText.substring(0, 40) + '…' : noteText;
-    const safeNote = JSON.stringify(noteText);
-    const safeCategory = JSON.stringify(t.category);
-    const safeInvestor = JSON.stringify(t.investor_name || '');
+    const safeNote = JSON.stringify(noteText).replace(/"/g, '&quot;');
+    const safeCategory = JSON.stringify(t.category).replace(/"/g, '&quot;');
+    const safeInvestor = JSON.stringify(t.investor_name || '').replace(/"/g, '&quot;');
 
     table.innerHTML += `
       <tr style="cursor:pointer;" onclick="showTransactionDetail(${safeCategory}, '${t.type}', ${t.amount}, '${t.transaction_date || t.created_at}', ${safeNote}, ${safeInvestor})">
@@ -412,7 +412,7 @@ function showTransactionDetail(category, type, amount, date, note, investor) {
         </div>` : `<div style="padding:16px 0;"><span style="color:var(--text-muted);font-size:13px;font-style:italic;">No note attached</span></div>`}
       </div>
 
-      <button onclick="exportTransactionCSV('${type}', ${JSON.stringify(category).replace(/'/g, "\\'")} , ${amount}, '${date}', ${JSON.stringify(note || '').replace(/'/g, "\\'")} , ${JSON.stringify(investor || '').replace(/'/g, "\\'")})" class="btn-primary" style="margin-top:20px;width:100%;justify-content:center;padding:14px;font-size:15px;border-radius:12px;gap:8px;">
+      <button onclick="exportTransactionCSV('${type}', ${JSON.stringify(category || '').replace(/"/g, '&quot;')}, ${amount}, '${date}', ${JSON.stringify(note || '').replace(/"/g, '&quot;')}, ${JSON.stringify(investor || '').replace(/"/g, '&quot;')})" class="btn-primary" style="margin-top:20px;width:100%;justify-content:center;padding:14px;font-size:15px;border-radius:12px;gap:8px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Export as CSV
       </button>
