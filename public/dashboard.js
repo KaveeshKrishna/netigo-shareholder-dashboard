@@ -396,7 +396,7 @@ function renderNotes() {
     }
 
     const div = document.createElement("div");
-    div.style = "background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 12px;";
+    div.className = "note-item";
 
     const checked = note.is_completed ? 'checked' : '';
 

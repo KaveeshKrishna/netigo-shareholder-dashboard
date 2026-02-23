@@ -250,37 +250,31 @@
         <div class="grid-stack-item-content">
           <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
             <div class="card-header"
-              style="flex-direction: column; align-items: stretch; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px; gap: 10px;">
+              style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--border-light); padding-bottom: 15px; margin-bottom: 15px; gap: 12px;">
               <h3 style="margin: 0;">Team Notes &amp; Tasks</h3>
-              <div style="display: flex; gap: 5px;" id="notesTabs">
-                <button class="btn-secondary active-tab" onclick="switchNotesTab('personal')"
-                  style="flex: 1; padding: 5px; font-size: 13px;">Personal</button>
-                <button class="btn-secondary" onclick="switchNotesTab('global')"
-                  style="flex: 1; padding: 5px; font-size: 13px;">Global</button>
-                <button class="btn-secondary" onclick="switchNotesTab('completed')"
-                  style="flex: 1; padding: 5px; font-size: 13px;">Completed</button>
+              <div class="notes-tabs-container" id="notesTabs">
+                <button class="tab-btn active-tab" onclick="switchNotesTab('personal')">Personal</button>
+                <button class="tab-btn" onclick="switchNotesTab('global')">Global</button>
+                <button class="tab-btn" onclick="switchNotesTab('completed')">Completed</button>
               </div>
             </div>
 
-            <div style="flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 10px;" id="notesList">
+            <div style="flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 15px;" id="notesList">
               <!-- Injected via JS -->
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
               <div style="display: flex; gap: 8px;">
-                <input type="text" id="newNoteInput" placeholder="Add a new task..."
-                  style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); font-family: inherit; font-size: 14px;">
-                <select id="newNoteGlobal" class="btn-secondary" onchange="toggleGlobalOptions()"
-                  style="background: var(--bg-main); border: 1px solid var(--border-color); padding: 0 10px; color: var(--text-main); font-size: 14px;">
+                <input type="text" id="newNoteInput" class="note-input-field" placeholder="What needs to be done?">
+                <select id="newNoteGlobal" class="note-select-field" onchange="toggleGlobalOptions()">
                   <option value="false">Personal</option>
                   <option value="true">Global</option>
                 </select>
               </div>
               <div id="globalTaskOptions" style="display: none; gap: 8px;">
-                <input type="date" id="newNoteDeadline"
-                  style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); font-family: inherit; font-size: 13px;">
-                <select id="newNoteAssignee" class="btn-secondary"
-                  style="flex: 1; background: var(--bg-main); border: 1px solid var(--border-color); padding: 0 10px; color: var(--text-main); font-size: 13px;">
+                <input type="date" id="newNoteDeadline" class="note-input-field"
+                  style="padding: 8px 12px; font-size: 13px;">
+                <select id="newNoteAssignee" class="note-select-field" style="flex: 1;">
                   <option value="all">Assign: ALL</option>
                   <% if (typeof allUsers !=='undefined' ) { %>
                     <% allUsers.forEach(u=> { %>
@@ -290,12 +284,12 @@
                       <% }) %>
                         <% } %>
                 </select>
-                <button class="btn-primary" onclick="addNote()" style="padding: 0 15px; font-size: 13px;">Add
+                <button class="btn-primary" onclick="addNote()" style="padding: 8px 16px; font-size: 13px;">Add
                   Task</button>
               </div>
               <div id="personalTaskOptions" style="display: flex; justify-content: flex-end;">
                 <button class="btn-primary" onclick="addNote()"
-                  style="padding: 8px 15px; width: 100%; font-size: 14px;">Add Task</button>
+                  style="padding: 8px 16px; width: 100%; font-size: 14px;">Add Task</button>
               </div>
             </div>
           </div>
