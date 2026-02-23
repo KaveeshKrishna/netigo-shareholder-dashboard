@@ -337,6 +337,7 @@ setInterval(pollData, 2000);
 
 // --- Notes System ---
 let notesData = [];
+let currentNotesTab = 'personal';
 
 async function loadNotes() {
   try {
@@ -348,43 +349,89 @@ async function loadNotes() {
   }
 }
 
+function switchNotesTab(tab) {
+  currentNotesTab = tab;
+  document.querySelectorAll('#notesTabs button').forEach(b => b.classList.remove('active-tab'));
+  event.target.classList.add('active-tab');
+  renderNotes();
+}
+
+function toggleGlobalOptions() {
+  const isGlobal = document.getElementById("newNoteGlobal").value === "true";
+  document.getElementById("globalTaskOptions").style.display = isGlobal ? "flex" : "none";
+  document.getElementById("personalTaskOptions").style.display = isGlobal ? "none" : "flex";
+}
+
 function renderNotes() {
   const list = document.getElementById("notesList");
   if (!list) return;
   list.innerHTML = "";
 
-  if (notesData.length === 0) {
-    list.innerHTML = `<p style="padding: 10px; color: var(--text-muted); text-align: center; font-style: italic;">No personal or global notes found.</p>`;
+  const filteredNotes = notesData.filter(n => {
+    if (currentNotesTab === 'completed') return n.is_completed;
+    if (currentNotesTab === 'global') return !n.is_completed && n.is_global;
+    return !n.is_completed && !n.is_global;
+  });
+
+  if (filteredNotes.length === 0) {
+    list.innerHTML = `<p style="padding: 10px; color: var(--text-muted); text-align: center; font-style: italic;">No tasks found.</p>`;
     return;
   }
 
-  notesData.forEach(note => {
-    const badge = note.is_global ? `<span style="background: rgba(239, 68, 68, 0.1); color: var(--color-expense); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 4px; display: inline-block;">Global (${note.username})</span>`
-      : `<span style="background: rgba(139, 92, 246, 0.1); color: var(--color-investment); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 4px; display: inline-block;">Personal Task</span>`;
+  filteredNotes.forEach(note => {
+    const dateStr = note.created_at ? new Date(note.created_at).toLocaleDateString() : '';
+    let metaHtml = '';
 
-    // Using DOMPurify concept or simple text element to prevent XSS is good, but we control the app.
-    // Clean string template
+    if (note.is_global) {
+      metaHtml += `<span style="color: var(--color-expense); font-weight: bold;">Global by ${note.creator_name || 'System'}</span>`;
+      if (note.assignee_name) metaHtml += ` &bull; Assigned to: ${note.assignee_name}`;
+    } else {
+      metaHtml += `<span style="color: var(--color-investment); font-weight: bold;">Personal Task</span>`;
+    }
+    metaHtml += ` &bull; Created: ${dateStr}`;
+
+    if (note.deadline) {
+      const dl = new Date(note.deadline).toLocaleDateString();
+      metaHtml += ` &bull; <span style="color: #ef4444;">Due: ${dl}</span>`;
+    }
+
     const div = document.createElement("div");
-    div.style = "background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start;";
+    div.style = "background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 12px;";
+
+    const checked = note.is_completed ? 'checked' : '';
 
     div.innerHTML = `
-      <div style="flex: 1; margin-right: 15px;">
-        ${badge}
-        <p style="color: var(--text-main); font-size: 14px; margin: 0; line-height: 1.5; word-wrap: break-word;">${note.content}</p>
+      <input type="checkbox" ${checked} onchange="toggleNoteCompletion(${note.id})" style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);">
+      <div style="flex: 1;">
+        <div style="font-size: 11px; margin-bottom: 4px; opacity: 0.8;">${metaHtml}</div>
+        <p style="color: var(--text-main); font-size: 14px; margin: 0; line-height: 1.5; word-wrap: break-word; ${note.is_completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${note.content}</p>
       </div>
-      <button onclick="deleteNote(${note.id})" style="background: transparent; border: none; color: var(--color-expense); cursor: pointer; padding: 5px; opacity: 0.7; transition: 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
-      </button>
     `;
     list.appendChild(div);
   });
 }
 
+async function toggleNoteCompletion(id) {
+  try {
+    const res = await fetch('/api/notes/' + id + '/toggle-complete', { method: 'PUT' });
+    if (!res.ok) throw new Error("Unauthorized");
+    loadNotes();
+  } catch (err) {
+    alert("You do not have permission to modify this task.");
+    loadNotes();
+  }
+}
+
 async function addNote() {
   const input = document.getElementById("newNoteInput");
   const typeSelect = document.getElementById("newNoteGlobal");
+  const deadlineInput = document.getElementById("newNoteDeadline");
+  const assigneeSelect = document.getElementById("newNoteAssignee");
+
   const content = input.value.trim();
   const is_global = typeSelect.value === "true";
+  const deadline = deadlineInput && is_global ? deadlineInput.value : null;
+  const assigned_to = assigneeSelect && is_global ? assigneeSelect.value : null;
 
   if (!content) return;
 
@@ -392,23 +439,13 @@ async function addNote() {
     await fetch("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, is_global })
+      body: JSON.stringify({ content, is_global, deadline, assigned_to })
     });
     input.value = "";
+    if (deadlineInput) deadlineInput.value = "";
     loadNotes();
   } catch (err) {
     alert("Error adding note.");
-  }
-}
-
-async function deleteNote(id) {
-  if (!confirm("Are you sure you want to delete this task?")) return;
-  try {
-    const res = await fetch('/api/notes/' + id, { method: "DELETE" });
-    if (!res.ok) throw new Error("Unauthorized");
-    loadNotes();
-  } catch (err) {
-    alert("You do not have permission to delete this note.");
   }
 }
 

@@ -88,12 +88,16 @@ async function initDb() {
       )
     `);
 
+    await pool.query(`DROP TABLE IF EXISTS notes`);
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS notes (
+      CREATE TABLE notes (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
         content TEXT NOT NULL,
         is_global BOOLEAN DEFAULT false,
+        is_completed BOOLEAN DEFAULT false,
+        deadline TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -195,8 +199,13 @@ app.get("/logout", async (req, res) => {
 });
 
 // ---------- DASHBOARD ROUTES ----------
-app.get("/", auth, (req, res) => {
-  res.render("dashboard", { user: req.user });
+app.get("/", auth, async (req, res) => {
+  try {
+    const usersRes = await pool.query("SELECT id, username FROM users ORDER BY username ASC");
+    res.render("dashboard", { user: req.user, allUsers: usersRes.rows });
+  } catch (err) {
+    res.render("dashboard", { user: req.user, allUsers: [] });
+  }
 });
 
 app.get("/updates", auth, (req, res) => {
@@ -207,10 +216,11 @@ app.get("/updates", auth, (req, res) => {
 app.get("/api/notes", auth, async (req, res) => {
   try {
     const query = `
-      SELECT n.*, u.username 
+      SELECT n.*, creator.username as creator_name, assignee.username as assignee_name
       FROM notes n 
-      JOIN users u ON n.user_id = u.id 
-      WHERE n.user_id = $1 OR n.is_global = true 
+      JOIN users creator ON n.user_id = creator.id 
+      LEFT JOIN users assignee ON n.assigned_to = assignee.id
+      WHERE n.user_id = $1 OR n.assigned_to = $1 OR n.is_global = true 
       ORDER BY n.created_at DESC
     `;
     const result = await pool.query(query, [req.user.id]);
@@ -221,14 +231,25 @@ app.get("/api/notes", auth, async (req, res) => {
 });
 
 app.post("/api/notes", auth, async (req, res) => {
-  const { content, is_global } = req.body;
+  const { content, is_global, deadline, assigned_to } = req.body;
   if (!content) return res.status(400).json({ error: "Content is required" });
 
   try {
+    let assignId = null;
+    if (is_global && assigned_to && assigned_to !== 'all') {
+      assignId = parseInt(assigned_to);
+    }
+
+    let deadlineTS = null;
+    if (deadline) {
+      deadlineTS = new Date(deadline);
+    }
+
     await pool.query(
-      "INSERT INTO notes (user_id, content, is_global) VALUES ($1, $2, $3)",
-      [req.user.id, content, is_global === true || is_global === 'true']
+      "INSERT INTO notes (user_id, assigned_to, content, is_global, deadline) VALUES ($1, $2, $3, $4, $5)",
+      [req.user.id, assignId, content, is_global === true || is_global === 'true', deadlineTS]
     );
+    dataVersion++;
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to add note" });
@@ -246,6 +267,25 @@ app.delete("/api/notes/:id", auth, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete note" });
+  }
+});
+
+app.put("/api/notes/:id/toggle-complete", auth, async (req, res) => {
+  try {
+    // Only creator, assignee, or superadmin can modify
+    const note = await pool.query("SELECT * FROM notes WHERE id = $1", [req.params.id]);
+    if (note.rowCount === 0) return res.status(404).json({ error: "Note not found" });
+
+    const n = note.rows[0];
+    if (req.user.role !== 'superadmin' && n.user_id !== req.user.id && n.assigned_to !== req.user.id) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    await pool.query("UPDATE notes SET is_completed = NOT is_completed WHERE id = $1", [req.params.id]);
+    dataVersion++;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to toggle note state" });
   }
 });
 
@@ -460,7 +500,8 @@ app.delete("/api/recurring/:id", auth, async (req, res) => {
 app.get("/admin", auth, async (req, res) => {
   try {
     const auditResult = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100");
-    res.render("admin", { user: req.user, auditLogs: auditResult.rows });
+    const usersRes = await pool.query("SELECT id, username FROM users ORDER BY username ASC");
+    res.render("admin", { user: req.user, auditLogs: auditResult.rows, allUsers: usersRes.rows });
   } catch (error) {
     res.status(500).send("Error loading admin panel");
   }
@@ -517,6 +558,7 @@ app.get("/superadmin", superAuth, async (req, res) => {
     res.render("superadmin", {
       user: req.user,
       usersList: usersResult.rows,
+      allUsers: usersResult.rows,
       auditLogs: auditResult.rows,
       pendingDeletions: pendingDeletions
     });
