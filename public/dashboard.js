@@ -708,16 +708,77 @@ const chartLineOpts = {
   }
 };
 
+// --- Chart Interactivity (Zoom/Pan & Y-Axis Slider) ---
+function setupChartInteractivity(canvasId, sliderId, options, dataVals) {
+  // 1. Enable Pan/Zoom via chartjs-plugin-zoom
+  options.plugins = options.plugins || {};
+  options.plugins.zoom = {
+    pan: { enabled: true, mode: 'xy', threshold: 10 },
+    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+  };
+
+  // 2. Setup Y-Axis slider via noUiSlider
+  const slider = document.getElementById(sliderId);
+  if (!slider) return;
+
+  let minData = Math.min(...dataVals);
+  let maxData = Math.max(...dataVals);
+  if (minData === Infinity || maxData === -Infinity) { minData = 0; maxData = 10000; }
+  if (minData === maxData) { minData -= 1000; maxData += 1000; }
+
+  const padding = Math.max(Math.abs(maxData - minData) * 0.2, 100);
+  const limitMin = Math.floor(minData - padding);
+  const limitMax = Math.ceil(maxData + padding);
+
+  if (!slider.noUiSlider) {
+    noUiSlider.create(slider, {
+      start: [limitMin, limitMax],
+      connect: true,
+      range: { min: limitMin, max: limitMax },
+      step: Math.max(1, Math.floor((limitMax - limitMin) / 100)),
+      format: { to: v => Math.round(v), from: Number }
+    });
+
+    // Update chart instantly when slider is dragged
+    slider.noUiSlider.on('slide', () => {
+      const chart = Chart.getChart(canvasId);
+      if (chart) {
+        const vals = slider.noUiSlider.get();
+        chart.options.scales.y.min = parseInt(vals[0]);
+        chart.options.scales.y.max = parseInt(vals[1]);
+        chart.update('none');
+      }
+    });
+  } else {
+    // Expand slider limits if new data exceeds existing bounds without breaking user's current handle position
+    const currentRange = slider.noUiSlider.options.range;
+    let newRangeMin = Math.min(currentRange.min, limitMin);
+    let newRangeMax = Math.max(currentRange.max, limitMax);
+    slider.noUiSlider.updateOptions({
+      range: { min: newRangeMin, max: newRangeMax }
+    }, false);
+  }
+
+  // Apply current slider values to chart bounds before standard render
+  if (slider.noUiSlider) {
+    const vals = slider.noUiSlider.get();
+    options.scales.y.min = parseInt(vals[0]);
+    options.scales.y.max = parseInt(vals[1]);
+  }
+}
+
 function renderRevenueChart(timeline) {
   const ctx = document.getElementById('revenueChart');
   if (!ctx) return;
   if (revenueChartInstance) revenueChartInstance.destroy();
 
   const customOptions = { ...chartLineOpts, scales: { x: chartLineOpts.scales.x, y: { ...chartLineOpts.scales.y } } };
-  const minY = document.getElementById('timelineMinY')?.value;
-  const maxY = document.getElementById('timelineMaxY')?.value;
-  if (minY) customOptions.scales.y.min = parseFloat(minY);
-  if (maxY) customOptions.scales.y.max = parseFloat(maxY);
+  const allVals = [
+    ...timeline.map(t => t.income),
+    ...timeline.map(t => t.expense),
+    ...timeline.map(t => t.investment)
+  ];
+  setupChartInteractivity('revenueChart', 'timelineSlider', customOptions, allVals);
 
   revenueChartInstance = new Chart(ctx.getContext('2d'), {
     type: 'line',
@@ -742,10 +803,11 @@ function renderProfitChart(timeline) {
   if (profitChartInstance) profitChartInstance.destroy();
 
   const customOptions = { ...chartLineOpts, scales: { x: chartLineOpts.scales.x, y: { ...chartLineOpts.scales.y } } };
-  const minY = document.getElementById('profitMinY')?.value;
-  const maxY = document.getElementById('profitMaxY')?.value;
-  if (minY !== undefined && minY !== '') customOptions.scales.y.min = parseFloat(minY);
-  if (maxY !== undefined && maxY !== '') customOptions.scales.y.max = parseFloat(maxY);
+  const allVals = [
+    ...timeline.map(t => t.income),
+    ...timeline.map(t => t.income - t.expense)
+  ];
+  setupChartInteractivity('profitChart', 'profitSlider', customOptions, allVals);
 
   profitChartInstance = new Chart(ctx.getContext('2d'), {
     type: 'line',
