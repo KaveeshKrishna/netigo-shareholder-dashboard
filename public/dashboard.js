@@ -713,6 +713,12 @@ function renderRevenueChart(timeline) {
   if (!ctx) return;
   if (revenueChartInstance) revenueChartInstance.destroy();
 
+  const customOptions = { ...chartLineOpts, scales: { x: chartLineOpts.scales.x, y: { ...chartLineOpts.scales.y } } };
+  const minY = document.getElementById('timelineMinY')?.value;
+  const maxY = document.getElementById('timelineMaxY')?.value;
+  if (minY) customOptions.scales.y.min = parseFloat(minY);
+  if (maxY) customOptions.scales.y.max = parseFloat(maxY);
+
   revenueChartInstance = new Chart(ctx.getContext('2d'), {
     type: 'line',
     data: {
@@ -723,7 +729,7 @@ function renderRevenueChart(timeline) {
         { label: 'Investments', data: timeline.map(t => t.investment), borderColor: '#8b5cf6', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], tension: 0.3, pointRadius: 3, pointBackgroundColor: '#8b5cf6' }
       ]
     },
-    options: { ...chartLineOpts }
+    options: customOptions
   });
 }
 
@@ -734,6 +740,12 @@ function renderProfitChart(timeline) {
   const ctx = document.getElementById('profitChart');
   if (!ctx) return;
   if (profitChartInstance) profitChartInstance.destroy();
+
+  const customOptions = { ...chartLineOpts, scales: { x: chartLineOpts.scales.x, y: { ...chartLineOpts.scales.y } } };
+  const minY = document.getElementById('profitMinY')?.value;
+  const maxY = document.getElementById('profitMaxY')?.value;
+  if (minY !== undefined && minY !== '') customOptions.scales.y.min = parseFloat(minY);
+  if (maxY !== undefined && maxY !== '') customOptions.scales.y.max = parseFloat(maxY);
 
   profitChartInstance = new Chart(ctx.getContext('2d'), {
     type: 'line',
@@ -752,7 +764,7 @@ function renderProfitChart(timeline) {
         }
       ]
     },
-    options: { ...chartLineOpts }
+    options: customOptions
   })
 }
 

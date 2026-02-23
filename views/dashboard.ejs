@@ -348,6 +348,12 @@
                 <span style="color:var(--text-muted);font-size:12px;">to</span>
                 <input type="date" id="timelineTo" onchange="loadRevenueTimeline()"
                   style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit;">
+                <span style="color:var(--text-muted);font-size:12px;margin-left:4px;">Y-Axis:</span>
+                <input type="number" id="timelineMinY" placeholder="Min" onchange="loadRevenueTimeline()" title="Y-Axis Minimum"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit; width: 60px;">
+                <span style="color:var(--text-muted);font-size:12px;">-</span>
+                <input type="number" id="timelineMaxY" placeholder="Max" onchange="loadRevenueTimeline()" title="Y-Axis Maximum"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit; width: 60px;">
               </div>
             </div>
             <div class="chart-container" style="flex: 1; min-height: 200px;">
@@ -412,6 +418,12 @@
                 <span style="color:var(--text-muted);font-size:12px;">to</span>
                 <input type="date" id="profitTo" onchange="loadProfitTrend()"
                   style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit;">
+                <span style="color:var(--text-muted);font-size:12px;margin-left:4px;">Y-Axis:</span>
+                <input type="number" id="profitMinY" placeholder="Min" onchange="loadProfitTrend()" title="Y-Axis Minimum"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit; width: 60px;">
+                <span style="color:var(--text-muted);font-size:12px;">-</span>
+                <input type="number" id="profitMaxY" placeholder="Max" onchange="loadProfitTrend()" title="Y-Axis Maximum"
+                  style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-family: inherit; width: 60px;">
               </div>
             </div>
             <div class="chart-container" style="flex: 1; min-height: 200px;">
