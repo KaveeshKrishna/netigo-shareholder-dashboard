@@ -339,7 +339,13 @@ let notesData = [];
 let currentNotesTab = 'global';
 let completedFilter = 'all';
 let isAnimating = false;
-let splitTiles = JSON.parse(localStorage.getItem('netigoSplitNotes') || '[]');
+let splitTiles = [];
+try {
+  const saved = JSON.parse(localStorage.getItem('netigoSplitNotes') || '[]');
+  if (Array.isArray(saved)) splitTiles = saved.filter(t => ['global', 'personal', 'completed'].includes(t));
+} catch (e) {
+  localStorage.removeItem('netigoSplitNotes');
+}
 
 function saveSplitTiles() {
   localStorage.setItem('netigoSplitNotes', JSON.stringify(splitTiles));
@@ -675,12 +681,7 @@ function renderNotes() {
 }
 
 async function deleteNote(id, isGlobal) {
-  if (isGlobal) {
-    const typed = prompt('This is a GLOBAL task. It will be deleted for ALL users.\nType DELETE to confirm:');
-    if (typed !== 'DELETE') return;
-  } else {
-    if (!confirm('Delete this task permanently?')) return;
-  }
+  if (!confirm('Delete this task permanently?')) return;
 
   isAnimating = true;
   const btn = document.querySelector(`button[onclick="deleteNote(${id}, ${isGlobal})"]`);
@@ -700,13 +701,7 @@ async function deleteNote(id, isGlobal) {
 }
 
 async function deleteAllCompleted() {
-  const hasGlobal = notesData.some(n => n.is_completed && n.is_global);
-  if (hasGlobal) {
-    const typed = prompt('This will delete completed tasks including GLOBAL tasks for ALL users.\nType DELETE to confirm:');
-    if (typed !== 'DELETE') return;
-  } else {
-    if (!confirm('Delete all completed tasks permanently?')) return;
-  }
+  if (!confirm('Delete all completed tasks permanently?')) return;
 
   isAnimating = true;
   document.querySelectorAll('.note-item').forEach(el => el.classList.add('note-item-fade-out'));
@@ -910,17 +905,28 @@ function initializeGrid() {
   });
 
   // Load saved layout if available
-  const savedLayout = localStorage.getItem("netigoGrid");
-  if (savedLayout) {
-    grid.load(JSON.parse(savedLayout), true);
+  try {
+    const savedLayout = localStorage.getItem("netigoGrid");
+    if (savedLayout) {
+      grid.load(JSON.parse(savedLayout), true);
+    }
+  } catch (e) {
+    console.warn('Corrupted grid layout, resetting:', e);
+    localStorage.removeItem('netigoGrid');
   }
 
   // Restore split tiles
-  splitTiles.forEach(cat => {
-    if (!document.querySelector(`[gs-id="notes-${cat}"]`)) {
-      createSplitTileWidget(cat);
-    }
-  });
+  try {
+    splitTiles.forEach(cat => {
+      if (!document.querySelector(`[gs-id="notes-${cat}"]`)) {
+        createSplitTileWidget(cat);
+      }
+    });
+  } catch (e) {
+    console.warn('Error restoring split tiles, resetting:', e);
+    splitTiles = [];
+    localStorage.removeItem('netigoSplitNotes');
+  }
 
   // Set correct default tab
   currentNotesTab = getDefaultTab() || 'global';

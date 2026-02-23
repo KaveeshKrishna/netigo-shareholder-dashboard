@@ -657,4 +657,21 @@ if (process.env.NODE_ENV !== "production" || process.env.IS_VPS === "true") {
   });
 }
 
+// Auto-delete completed tasks older than 30 days (runs every hour)
+async function cleanupOldCompleted() {
+  try {
+    const result = await pool.query(
+      "DELETE FROM notes WHERE is_completed = true AND created_at < NOW() - INTERVAL '30 days'"
+    );
+    if (result.rowCount > 0) {
+      console.log(`🧹 Auto-cleaned ${result.rowCount} completed tasks older than 30 days`);
+      dataVersion++;
+    }
+  } catch (err) {
+    console.error("Cleanup failed:", err.message);
+  }
+}
+cleanupOldCompleted();
+setInterval(cleanupOldCompleted, 60 * 60 * 1000); // Every hour
+
 module.exports = app;
