@@ -167,6 +167,8 @@ async function loadFinanceSummary() {
   }
 }
 
+let investorChartMode = 'ownership';
+
 function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct) {
   const ctx = document.getElementById('investorChart');
   const list = document.getElementById('investorList');
@@ -179,7 +181,7 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
   const companySavingsAmt = netProfit * (companySavingsPct / 100);
   const distributableProfit = netProfit - companySavingsAmt;
 
-  // Build investor rows with calculated profit amounts
+  // Build enriched investor data
   const enriched = investors.map(inv => ({
     ...inv,
     invested: parseFloat(inv.invested) || 0,
@@ -188,50 +190,71 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
     profitAmount: distributableProfit * ((parseFloat(inv.profit_share_pct) || 0) / 100)
   }));
 
-  // Doughnut chart data — ownership %
-  const chartLabels = enriched.map(i => i.name);
-  const chartData = enriched.map(i => i.ownership_pct);
-  if (companySavingsPct > 0) {
-    chartLabels.push('Company');
-    chartData.push(companySavingsPct);
+  // Store globally for modals
+  window._investorData = { enriched, companySavingsPct, netProfit, distributableProfit, companySavingsAmt };
+
+  // --- Chart based on selected mode ---
+  let chartLabels = [], chartData = [], chartColors = [], tooltipSuffix = '%';
+
+  if (investorChartMode === 'investment') {
+    chartLabels = enriched.map(i => i.name);
+    chartData = enriched.map(i => i.invested);
+    chartColors = colors.slice(0, enriched.length);
+    tooltipSuffix = '';
+  } else if (investorChartMode === 'ownership') {
+    chartLabels = enriched.map(i => i.name);
+    chartData = enriched.map(i => i.ownership_pct);
+    chartColors = colors.slice(0, enriched.length);
+  } else if (investorChartMode === 'profit') {
+    chartLabels = enriched.map(i => i.name);
+    chartData = enriched.map(i => i.profit_share_pct);
+    chartColors = colors.slice(0, enriched.length);
+    if (companySavingsPct > 0) {
+      chartLabels.push('Company');
+      chartData.push(companySavingsPct);
+      chartColors.push('#64748b');
+    }
   }
 
   if (chartData.some(v => v > 0)) {
+    const tooltipCb = investorChartMode === 'investment'
+      ? (c => ' ' + c.label + ': ' + formatMoney(c.raw))
+      : (c => ' ' + c.label + ': ' + c.raw + '%');
+
     investorChartInstance = new Chart(ctx.getContext('2d'), {
       type: 'doughnut',
       data: {
         labels: chartLabels,
-        datasets: [{ data: chartData, backgroundColor: [...colors.slice(0, enriched.length), '#64748b'], borderWidth: 0, hoverOffset: 8 }]
+        datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 0, hoverOffset: 8 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '70%',
         plugins: {
           legend: { display: false },
-          tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', padding: 10, cornerRadius: 8, callbacks: { label: c => ' ' + c.label + ': ' + c.raw + '%' } }
+          tooltip: { backgroundColor: 'rgba(30,41,59,0.95)', padding: 10, cornerRadius: 8, callbacks: { label: tooltipCb } }
         }
       }
     });
   }
 
-  // Build the HTML
+  // --- Investor list rows ---
   let html = '';
 
   // Company Savings row
   html += `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(100,116,139,0.1);border-radius:10px;margin-bottom:10px;border:1px dashed var(--border-light);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(100,116,139,0.08);border-radius:10px;margin-bottom:8px;border:1px dashed var(--border-light);">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:10px;height:10px;border-radius:50%;background:#64748b;flex-shrink:0;"></div>
         <div>
-          <p style="margin:0;font-weight:600;font-size:14px;color:var(--text-main);">💰 Company Savings</p>
-          <p style="margin:0;font-size:11px;color:var(--text-muted);">Reserved from net profit</p>
+          <p style="margin:0;font-weight:600;font-size:13px;color:var(--text-main);">💰 Company Savings</p>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:12px;">
+      <div style="display:flex;align-items:center;gap:8px;">
         <input type="number" value="${companySavingsPct}" min="0" max="100" step="0.5"
-          style="width:60px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:4px 6px;font-size:13px;text-align:right;font-family:Outfit;"
+          style="width:55px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:4px 6px;font-size:12px;text-align:right;font-family:Outfit;"
           onchange="updateCompanySavings(this.value)" />
-        <span style="color:var(--text-muted);font-size:12px;">%</span>
-        <span style="font-weight:600;font-size:13px;color:#64748b;min-width:80px;text-align:right;">${formatMoney(companySavingsAmt)}</span>
+        <span style="color:var(--text-muted);font-size:11px;">%</span>
+        <span style="font-weight:600;font-size:12px;color:#64748b;min-width:70px;text-align:right;">${formatMoney(companySavingsAmt)}</span>
       </div>
     </div>
   `;
@@ -239,32 +262,20 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
   // Investor rows
   enriched.forEach((inv, i) => {
     html += `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border-light);gap:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border-light);">
         <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
           <div style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]};flex-shrink:0;"></div>
           <div style="min-width:0;">
-            <p style="margin:0;font-weight:600;font-size:14px;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inv.name}</p>
-            <p style="margin:0;font-size:11px;color:var(--color-investment);">Invested: ${formatMoney(inv.invested)}</p>
+            <p style="margin:0;font-weight:600;font-size:13px;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inv.name}</p>
+            <p style="margin:0;font-size:10px;color:var(--text-muted);">Invested: ${formatMoney(inv.invested)} · Own: ${inv.ownership_pct}% · Profit: ${inv.profit_share_pct}%</p>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-          <div style="text-align:center;">
-            <span style="font-size:9px;color:var(--text-muted);display:block;">Own%</span>
-            <input type="number" value="${inv.ownership_pct}" min="0" max="100" step="0.5"
-              style="width:50px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:5px;color:var(--text-main);padding:3px 4px;font-size:12px;text-align:center;font-family:Outfit;"
-              onchange="updateInvestorPct(${inv.id}, this.parentElement.parentElement)" data-field="ownership" />
-          </div>
-          <div style="text-align:center;">
-            <span style="font-size:9px;color:var(--text-muted);display:block;">Profit%</span>
-            <input type="number" value="${inv.profit_share_pct}" min="0" max="100" step="0.5"
-              style="width:50px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:5px;color:var(--text-main);padding:3px 4px;font-size:12px;text-align:center;font-family:Outfit;"
-              onchange="updateInvestorPct(${inv.id}, this.parentElement.parentElement)" data-field="profit" />
-          </div>
-          <div style="text-align:right;min-width:75px;">
-            <span style="font-size:9px;color:var(--text-muted);display:block;">Earnings</span>
-            <span style="font-weight:600;font-size:12px;color:${inv.profitAmount >= 0 ? 'var(--color-income)' : 'var(--color-expense)'};">${formatMoney(inv.profitAmount)}</span>
-          </div>
-          <button onclick="deleteInvestor(${inv.id})" style="background:none;border:none;color:var(--color-expense);cursor:pointer;padding:4px;opacity:0.6;" title="Remove Investor">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-weight:600;font-size:12px;color:${inv.profitAmount >= 0 ? 'var(--color-income)' : 'var(--color-expense)'};">${formatMoney(inv.profitAmount)}</span>
+          <button onclick="openEditInvestorModal(${inv.id}, '${inv.name.replace(/'/g, "\\'")}', ${inv.ownership_pct}, ${inv.profit_share_pct})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;" title="Edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button onclick="deleteInvestor(${inv.id})" style="background:none;border:none;color:var(--color-expense);cursor:pointer;padding:4px;opacity:0.5;" title="Remove">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           </button>
         </div>
@@ -272,31 +283,109 @@ function renderInvestorWidget(investors, totalVal, netProfit, companySavingsPct)
     `;
   });
 
-  // Add investor form
-  html += `
-    <div style="padding:12px;border-top:1px solid var(--border-light);margin-top:4px;">
-      <div id="addInvestorForm" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <input type="text" id="newInvName" placeholder="Name" style="flex:1;min-width:80px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:6px 8px;font-size:12px;font-family:Outfit;" />
-        <input type="number" id="newInvOwn" placeholder="Own%" value="0" min="0" max="100" step="0.5" style="width:55px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:6px 4px;font-size:12px;text-align:center;font-family:Outfit;" />
-        <input type="number" id="newInvProfit" placeholder="Profit%" value="0" min="0" max="100" step="0.5" style="width:55px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:6px 4px;font-size:12px;text-align:center;font-family:Outfit;" />
-        <button onclick="addInvestorFromWidget()" style="background:var(--color-income);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600;font-family:Outfit;">+ Add</button>
-      </div>
-    </div>
-  `;
+  if (enriched.length === 0) {
+    html += '<p style="color:var(--text-muted);text-align:center;font-size:12px;padding:20px;">No investors added yet.</p>';
+  }
 
   list.innerHTML = html;
 }
 
-// Investor widget actions
-async function updateInvestorPct(id, container) {
-  const inputs = container.querySelectorAll('input[type="number"]');
-  const ownership = inputs[0].value;
-  const profit = inputs[1].value;
+// --- Investor Modals ---
+function openAddInvestorModal() {
+  const existing = document.getElementById('investorModal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'investorModal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:16px;padding:30px;width:90%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <h3 style="margin:0 0 20px;color:var(--text-main);font-family:Outfit;">Add Investor</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Investor Name</label>
+          <input type="text" id="modalInvName" placeholder="Enter name" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;">
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Ownership %</label>
+            <input type="number" id="modalInvOwn" value="0" min="0" max="100" step="0.5" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;">
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Profit Share %</label>
+            <input type="number" id="modalInvProfit" value="0" min="0" max="100" step="0.5" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px;">
+          <button onclick="submitAddInvestor()" class="btn-primary" style="flex:1;justify-content:center;padding:12px;border-radius:10px;font-size:14px;">Add Investor</button>
+          <button onclick="document.getElementById('investorModal').remove()" class="btn-secondary" style="padding:12px 20px;border-radius:10px;font-size:14px;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('modalInvName').focus();
+}
+
+async function submitAddInvestor() {
+  const name = document.getElementById('modalInvName').value.trim();
+  if (!name) return alert('Please enter a name');
+  const own = document.getElementById('modalInvOwn').value;
+  const profit = document.getElementById('modalInvProfit').value;
+  await fetch('/api/investors', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, ownership_pct: own, profit_share_pct: profit })
+  });
+  document.getElementById('investorModal').remove();
+  loadFinanceSummary();
+  loadInvestors();
+}
+
+function openEditInvestorModal(id, name, ownershipPct, profitPct) {
+  const existing = document.getElementById('investorModal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'investorModal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:16px;padding:30px;width:90%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <h3 style="margin:0 0 20px;color:var(--text-main);font-family:Outfit;">Edit — ${name}</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;">
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Ownership %</label>
+            <input type="number" id="editInvOwn" value="${ownershipPct}" min="0" max="100" step="0.5" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;">
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Profit Share %</label>
+            <input type="number" id="editInvProfit" value="${profitPct}" min="0" max="100" step="0.5" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px;">
+          <button onclick="submitEditInvestor(${id})" class="btn-primary" style="flex:1;justify-content:center;padding:12px;border-radius:10px;font-size:14px;">Save Changes</button>
+          <button onclick="document.getElementById('investorModal').remove()" class="btn-secondary" style="padding:12px 20px;border-radius:10px;font-size:14px;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function submitEditInvestor(id) {
+  const ownership = document.getElementById('editInvOwn').value;
+  const profit = document.getElementById('editInvProfit').value;
   await fetch(`/api/investors/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ownership_pct: ownership, profit_share_pct: profit })
   });
+  document.getElementById('investorModal').remove();
   loadFinanceSummary();
 }
 
@@ -309,18 +398,9 @@ async function updateCompanySavings(val) {
   loadFinanceSummary();
 }
 
-async function addInvestorFromWidget() {
-  const name = document.getElementById('newInvName').value.trim();
-  if (!name) return alert('Please enter a name');
-  const own = document.getElementById('newInvOwn').value;
-  const profit = document.getElementById('newInvProfit').value;
-  await fetch('/api/investors', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, ownership_pct: own, profit_share_pct: profit })
-  });
+function switchInvestorChartMode(mode) {
+  investorChartMode = mode;
   loadFinanceSummary();
-  loadInvestors(); // Refresh the transaction form dropdown too
 }
 
 async function deleteInvestor(id) {

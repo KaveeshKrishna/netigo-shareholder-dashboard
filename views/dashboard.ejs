@@ -332,8 +332,24 @@
         <div class="grid-stack-item-content">
           <div class="card recent-card" style="height: 100%; display: flex; flex-direction: column;">
             <div class="card-header"
-              style="border-bottom: 1px solid var(--border-light); padding-bottom: 15px; margin-bottom: 15px;">
+              style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <h3 style="margin: 0;">Investor Ownership</h3>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <select onchange="switchInvestorChartMode(this.value)"
+                  style="background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:6px;color:var(--text-main);padding:5px 8px;font-size:11px;font-family:Outfit;cursor:pointer;">
+                  <option value="ownership" selected>Ownership</option>
+                  <option value="investment">Investment</option>
+                  <option value="profit">Profit Sharing</option>
+                </select>
+                <button onclick="openAddInvestorModal()" class="btn-primary"
+                  style="padding:5px 12px;font-size:11px;border-radius:6px;gap:4px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add
+                </button>
+              </div>
             </div>
             <div class="chart-container" style="height: 180px; margin-bottom: 15px;">
               <canvas id="investorChart"></canvas>
