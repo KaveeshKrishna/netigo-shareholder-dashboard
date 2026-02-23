@@ -374,6 +374,37 @@ app.post("/api/add", auth, async (req, res) => {
   }
 });
 
+app.put("/api/transactions/:id", auth, async (req, res) => {
+  const { type, category, amount, note, date, investor_name } = req.body;
+  try {
+    const tDate = date || new Date().toISOString().split('T')[0];
+
+    const oldRes = await pool.query("SELECT * FROM transactions WHERE id = $1", [req.params.id]);
+    if (oldRes.rows.length === 0) return res.status(404).json({ error: "Transaction not found" });
+
+    await pool.query(
+      "UPDATE transactions SET type = $1, category = $2, amount = $3, note = $4, transaction_date = $5, investor_name = $6 WHERE id = $7",
+      [type, category, amount, note, tDate, type === 'investment' ? (investor_name || null) : null, req.params.id]
+    );
+
+    // Auto-add investor to presets
+    if (type === 'investment' && investor_name && investor_name.trim()) {
+      await pool.query("INSERT INTO investors (name) VALUES ($1) ON CONFLICT DO NOTHING", [investor_name.trim()]);
+    }
+
+    // Record to audit log
+    await pool.query(
+      "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
+      ['UPDATE', `Updated ${type.toUpperCase()} of ₹${amount} for ${category}${investor_name ? ' by ' + investor_name : ''}`, req.user.username]
+    );
+
+    dataVersion++;
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update transaction" });
+  }
+});
+
 app.get("/api/export", auth, async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM transactions ORDER BY transaction_date DESC, created_at DESC");

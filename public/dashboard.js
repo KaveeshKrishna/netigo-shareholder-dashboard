@@ -39,6 +39,9 @@ async function load() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.23l.14.34"/></svg>
               </button>
             ` : ''}
+            <button class="btn-icon-danger" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;" onclick="event.stopPropagation();openEditTransactionModal(${t.id}, '${t.type}', ${safeCategory}, ${t.amount}, '${t.transaction_date || t.created_at}', ${safeNote}, ${safeInvestor})" title="Edit Transaction">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
             <button class="btn-icon-danger" onclick="event.stopPropagation();openDeleteModal(${t.id})" title="Delete Transaction">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
@@ -777,7 +780,102 @@ document.getElementById("addForm").onsubmit = async e => {
   loadProfitTrend();
 };
 
-// 3. Secure Deletion
+// 3. Edit Transaction
+function openEditTransactionModal(id, type, category, amount, date, note, investor) {
+  const existing = document.getElementById('editTxModal');
+  if (existing) existing.remove();
+
+  const isInvestment = type === 'investment';
+  const currentInvestors = (window._investorData?.enriched || []);
+  let invOptions = '<option value="">Select Investor</option>';
+  currentInvestors.forEach(inv => {
+    const sel = inv.name === investor ? 'selected' : '';
+    invOptions += `<option value="${inv.name}" ${sel}>${inv.name}</option>`;
+  });
+
+  const overlay = document.createElement('div');
+  overlay.id = 'editTxModal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:16px;padding:30px;width:90%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <h3 style="margin:0 0 20px;color:var(--text-main);font-family:Outfit;">Edit Transaction</h3>
+      <form id="editTxForm" onsubmit="submitEditTransaction(event, ${id})">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Type</label>
+            <select id="editTxType" required style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;">
+              <option value="investment" ${type === 'investment' ? 'selected' : ''}>Investment</option>
+              <option value="income" ${type === 'income' ? 'selected' : ''}>Income</option>
+              <option value="expense" ${type === 'expense' ? 'selected' : ''}>Expense</option>
+            </select>
+          </div>
+          <div id="editTxInvGroup" style="display:${isInvestment ? 'block' : 'none'}">
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Investor</label>
+            <select id="editTxInvestor" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;">
+              ${invOptions}
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Category / Sub-category</label>
+            <input type="text" id="editTxCategory" value="${category || ''}" required style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;" />
+          </div>
+          <div style="display:flex;gap:12px;">
+            <div style="flex:1;">
+              <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Amount (₹)</label>
+              <input type="number" id="editTxAmount" value="${amount}" required min="0" step="0.01" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;" />
+            </div>
+            <div style="flex:1;">
+              <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Date</label>
+              <input type="date" id="editTxDate" value="${String(date).substring(0, 10)}" required style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;" />
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Note (Optional)</label>
+            <textarea id="editTxNote" rows="2" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;">${note || ''}</textarea>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:6px;">
+            <button type="submit" class="btn-primary" style="flex:1;justify-content:center;padding:12px;border-radius:10px;font-size:14px;">Save Changes</button>
+            <button type="button" onclick="document.getElementById('editTxModal').remove()" class="btn-secondary" style="padding:12px 20px;border-radius:10px;font-size:14px;">Cancel</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  document.getElementById('editTxType').addEventListener('change', function () {
+    document.getElementById('editTxInvGroup').style.display = this.value === 'investment' ? 'block' : 'none';
+  });
+}
+
+async function submitEditTransaction(e, id) {
+  e.preventDefault();
+  const type = document.getElementById('editTxType').value;
+  const data = {
+    type,
+    category: document.getElementById('editTxCategory').value,
+    amount: document.getElementById('editTxAmount').value,
+    date: document.getElementById('editTxDate').value,
+    note: document.getElementById('editTxNote').value,
+    investor_name: type === 'investment' ? document.getElementById('editTxInvestor').value : ''
+  };
+
+  await fetch('/api/transactions/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  document.getElementById('editTxModal').remove();
+  load();
+  loadFinanceSummary();
+  loadRevenueTimeline();
+  loadProfitTrend();
+}
+
+// 4. Secure Deletion
 const delModal = document.getElementById("deleteModal");
 function openDeleteModal(id, type = 'transaction') {
   document.getElementById("deleteId").value = id;
