@@ -493,12 +493,12 @@ document.getElementById("deleteForm").onsubmit = async e => {
 
 // 4. Online Presence
 async function pingPresence() {
-  await fetch("/api/ping", { method: "POST" });
+  await fetch("/api/ping", { method: "POST", cache: 'no-store' });
   loadOnlineUsers();
 }
 
 async function loadOnlineUsers() {
-  const res = await fetch("/api/online");
+  const res = await fetch("/api/online", { cache: 'no-store' });
   const users = await res.json();
   const container = document.getElementById("online-users-list");
 
@@ -634,13 +634,16 @@ async function pollData() {
   await pingPresence(); // Updates last_seen and refreshes the online users UI
 
   try {
-    const res = await fetch("/api/version");
+    const res = await fetch("/api/version", { cache: 'no-store' });
     const data = await res.json();
     if (data.version > currentVersion) {
       currentVersion = data.version;
       load();              // Fetch transactions & redraw chart
       loadRecurringCosts(); // Fetch and redraw recurring widget
       loadNotes();         // Fetch and redraw notes
+      loadFinanceSummary(); // Refresh stat cards
+      loadRevenueTimeline(); // Refresh revenue chart
+      loadProfitTrend();    // Refresh profit chart
     }
   } catch (err) {
     console.error("Polling error:", err);
