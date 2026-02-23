@@ -938,7 +938,40 @@ select option {
 }
 
 .note-item input[type='radio']:hover {
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6) !important;
+  transform: scale(1.4) !important;
+}
+
+@keyframes fadeOutTask {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+@keyframes fadeInTask {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.note-item-fade-out {
+  animation: fadeOutTask 0.35s ease forwards !important;
+}
+
+.note-item-fade-in {
+  animation: fadeInTask 0.35s ease forwards !important;
 }
 
 .note-item input[type='radio']:checked {

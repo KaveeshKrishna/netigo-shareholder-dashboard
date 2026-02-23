@@ -484,6 +484,15 @@ function renderNotes() {
 }
 
 async function toggleNoteCompletion(id) {
+  // Find the radio input and animate the parent note-item
+  const radio = document.querySelector(`input[type="radio"][onclick="toggleNoteCompletion(${id})"]`);
+  const noteItem = radio ? radio.closest('.note-item') : null;
+
+  if (noteItem) {
+    noteItem.classList.add('note-item-fade-out');
+    await new Promise(r => setTimeout(r, 350));
+  }
+
   try {
     const res = await fetch('/api/notes/' + id + '/toggle-complete', { method: 'PUT' });
     if (!res.ok) throw new Error("Unauthorized");
