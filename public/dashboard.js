@@ -1789,13 +1789,13 @@ function initializeGrid() {
 
   // Load saved layout if available
   try {
-    const savedLayout = localStorage.getItem("netigoGrid_v2");
+    const savedLayout = localStorage.getItem("netigoGrid_v3");
     if (savedLayout) {
       grid.load(JSON.parse(savedLayout), true);
     }
   } catch (e) {
     console.warn('Corrupted grid layout, resetting:', e);
-    localStorage.removeItem('netigoGrid_v2');
+    localStorage.removeItem('netigoGrid_v3');
   }
 
   // Restore split tiles
@@ -1825,7 +1825,7 @@ function initializeGrid() {
 
 function saveGrid() {
   const layout = grid.save();
-  localStorage.setItem("netigoGrid_v2", JSON.stringify(layout));
+  localStorage.setItem("netigoGrid_v3", JSON.stringify(layout));
 }
 
 let isEditingLayout = false;
@@ -1860,7 +1860,7 @@ function toggleEditLayout() {
 
 function resetGrid() {
   if (confirm("Are you sure you want to reset the layout to factory defaults?")) {
-    localStorage.removeItem("netigoGrid_v2");
+    localStorage.removeItem("netigoGrid_v3");
     localStorage.removeItem("netigoSplitNotes");
     window.location.reload();
   }
