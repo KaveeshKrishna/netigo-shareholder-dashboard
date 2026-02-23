@@ -402,7 +402,8 @@ function openViewTaskModal(note) {
     document.getElementById('viewTaskDeadline').innerText = 'Due: ' + new Date(note.deadline).toLocaleDateString();
     deadlineContainer.style.display = 'flex';
   } else {
-    deadlineContainer.style.display = 'none';
+    document.getElementById('viewTaskDeadline').innerText = 'Due: Anytime';
+    deadlineContainer.style.display = 'flex';
   }
 
   document.getElementById('viewTaskModal').classList.add('active');
@@ -426,6 +427,13 @@ function renderNotes() {
     list.innerHTML = `<p style="padding: 10px; color: var(--text-muted); text-align: center; font-style: italic;">No tasks found.</p>`;
     return;
   }
+
+  filteredNotes.sort((a, b) => {
+    if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+    if (a.deadline) return -1;
+    if (b.deadline) return 1;
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
 
   filteredNotes.forEach(note => {
     const div = document.createElement("div");
@@ -454,11 +462,13 @@ function renderNotes() {
     if (note.deadline) {
       const dl = new Date(note.deadline).toLocaleDateString();
       deadlineHtml = `<span style="font-size: 11px; color: var(--color-expense); margin-right: 8px;">Due: ${dl}</span>`;
+    } else {
+      deadlineHtml = `<span style="font-size: 11px; color: var(--text-muted); margin-right: 8px;">Due: Anytime</span>`;
     }
 
     div.innerHTML = `
-      <div style="padding-top: 2px;">
-        <input type="radio" ${isChecked} onclick="toggleNoteCompletion(${note.id})" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); margin: 0;">
+      <div style="padding-top: 2px; flex-shrink: 0; display: flex; align-items: center;">
+        <input type="radio" ${isChecked} onclick="toggleNoteCompletion(${note.id})">
       </div>
       <div style="flex: 1; min-width: 0;">
         <p style="color: var(--text-main); font-size: 14px; margin: 0 0 4px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; ${textStyle}">${note.content}</p>
@@ -493,7 +503,7 @@ async function addNote() {
   const content = input.value.trim();
   const description = descInput ? descInput.value.trim() : "";
   const is_global = typeSelect.value === "true";
-  const deadline = deadlineInput && is_global ? deadlineInput.value : null;
+  const deadline = deadlineInput ? deadlineInput.value : null;
   const assigned_to = assigneeSelect && is_global ? assigneeSelect.value : null;
 
   if (!content) return;

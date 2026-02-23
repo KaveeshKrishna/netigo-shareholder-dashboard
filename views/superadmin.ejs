@@ -729,11 +729,11 @@
                     <textarea id="modalNoteDescription" class="note-input-field" placeholder="Add more details..."
                         rows="3" style="resize: vertical; font-family: inherit; font-size: 14px;"></textarea>
                 </div>
+                <div class="input-group">
+                    <label>Deadline (Optional)</label>
+                    <input type="date" id="modalNoteDeadline" class="note-input-field">
+                </div>
                 <div id="modalGlobalOptions" style="display: none; flex-direction: column; gap: 15px;">
-                    <div class="input-group">
-                        <label>Deadline (Optional)</label>
-                        <input type="date" id="modalNoteDeadline" class="note-input-field">
-                    </div>
                     <div class="input-group">
                         <label>Assignee</label>
                         <select id="modalNoteAssignee" class="note-select-field" style="padding: 12px; height: auto;">
@@ -760,7 +760,9 @@
         <div class="modal card" style="max-width: 500px;">
             <div class="modal-header"
                 style="border-bottom: 1px solid var(--border-light); padding-bottom: 15px; margin-bottom: 15px;">
-                <h3 id="viewTaskTitle" style="word-wrap: break-word; line-height: 1.4;">Task Details</h3>
+                <h3 id="viewTaskTitle"
+                    style="word-wrap: break-word; word-break: break-all; line-height: 1.4; max-width: 90%;">Task Details
+                </h3>
                 <button class="close-modal" id="closeViewTaskBtn">✕</button>
             </div>
             <div style="display: flex; flex-direction: column; gap: 15px;">
