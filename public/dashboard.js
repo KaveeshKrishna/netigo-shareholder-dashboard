@@ -466,11 +466,57 @@ function switchInvestorChartMode(mode) {
   loadFinanceSummary();
 }
 
-async function deleteInvestor(id) {
-  if (!confirm('Remove this investor?')) return;
-  await fetch(`/api/investors/${id}`, { method: 'DELETE' });
-  loadFinanceSummary();
-  loadInvestors();
+function deleteInvestor(id) {
+  const existing = document.getElementById('investorModal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'investorModal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:16px;padding:30px;width:90%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <h3 style="margin:0 0 8px;color:var(--color-expense);font-family:Outfit;">⚠️ Delete Investor</h3>
+      <p style="margin:0 0 20px;color:var(--text-muted);font-size:13px;font-family:Outfit;">Enter your password to confirm deletion.</p>
+      <div>
+        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:Outfit;">Password</label>
+        <input type="password" id="deleteInvPassword" placeholder="Enter your password" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;color:var(--text-main);padding:10px 12px;font-size:14px;font-family:Outfit;box-sizing:border-box;" />
+        <p id="deleteInvError" style="display:none;color:var(--color-expense);font-size:12px;margin:8px 0 0;font-family:Outfit;"></p>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button onclick="confirmDeleteInvestor(${id})" style="flex:1;background:var(--color-expense);color:white;border:none;border-radius:10px;padding:12px;font-size:14px;cursor:pointer;font-weight:600;font-family:Outfit;">Delete</button>
+        <button onclick="document.getElementById('investorModal').remove()" class="btn-secondary" style="padding:12px 20px;border-radius:10px;font-size:14px;">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('deleteInvPassword').focus();
+}
+
+async function confirmDeleteInvestor(id) {
+  const password = document.getElementById('deleteInvPassword').value;
+  if (!password) {
+    const err = document.getElementById('deleteInvError');
+    err.textContent = 'Please enter your password';
+    err.style.display = 'block';
+    return;
+  }
+  const res = await fetch(`/api/investors/${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('investorModal').remove();
+    loadFinanceSummary();
+    loadInvestors();
+  } else {
+    const err = document.getElementById('deleteInvError');
+    err.textContent = data.error || 'Incorrect password';
+    err.style.display = 'block';
+  }
 }
 
 // Independent Revenue Timeline loader

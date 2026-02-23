@@ -548,6 +548,16 @@ app.put("/api/investors/:id", auth, async (req, res) => {
 
 app.delete("/api/investors/:id", auth, async (req, res) => {
   try {
+    const { password } = req.body || {};
+    if (!password) return res.status(400).json({ error: "Password required" });
+
+    // Verify password against current user
+    const userResult = await pool.query("SELECT password FROM users WHERE id = $1", [req.user.id]);
+    if (userResult.rows.length === 0) return res.status(401).json({ error: "User not found" });
+
+    const valid = await bcrypt.compare(password, userResult.rows[0].password);
+    if (!valid) return res.status(403).json({ error: "Incorrect password" });
+
     await pool.query("DELETE FROM investors WHERE id = $1", [req.params.id]);
     dataVersion++;
     res.json({ success: true });
