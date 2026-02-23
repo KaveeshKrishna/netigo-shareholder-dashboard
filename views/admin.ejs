@@ -190,8 +190,8 @@
                             <h3 style="margin: 0;">Team Notes &amp; Tasks</h3>
                             <select id="notesViewSelect" class="btn-secondary" onchange="switchNotesTab(this.value)"
                                 style="width: 100%; padding: 8px 12px; font-size: 14px; border-radius: 8px; font-family: inherit;">
-                                <option value="personal">Personal Tasks</option>
                                 <option value="global">Global Tasks</option>
+                                <option value="personal">Personal Tasks</option>
                                 <option value="completed">Completed Archive</option>
                             </select>
                         </div>
@@ -313,7 +313,7 @@
 
         // --- Notes System ---
         let notesData = [];
-        let currentNotesTab = 'personal';
+        let currentNotesTab = 'global';
         let isAnimating = false;
 
         async function loadNotes() {

@@ -338,16 +338,37 @@ setInterval(loadNotes, 2000);
 
 // --- Notes System ---
 let notesData = [];
-let currentNotesTab = 'personal';
+let currentNotesTab = 'global';
 let completedFilter = 'all';
 let isAnimating = false;
+let splitTiles = JSON.parse(localStorage.getItem('netigoSplitNotes') || '[]');
+
+function saveSplitTiles() {
+  localStorage.setItem('netigoSplitNotes', JSON.stringify(splitTiles));
+}
+
+function getAvailableTabsForStacked() {
+  const allTabs = ['global', 'personal', 'completed'];
+  return allTabs.filter(t => !splitTiles.includes(t));
+}
+
+function getDefaultTab() {
+  const available = getAvailableTabsForStacked();
+  if (available.length === 0) return null;
+  // Priority: global > personal > completed
+  if (available.includes('global')) return 'global';
+  if (available.includes('personal')) return 'personal';
+  return 'completed';
+}
+
+const TAB_LABELS = { global: 'Global Tasks', personal: 'Personal Tasks', completed: 'Completed Archive' };
 
 async function loadNotes() {
   if (isAnimating) return;
   try {
     const res = await fetch("/api/notes");
     notesData = await res.json();
-    renderNotes();
+    renderAllNotes();
   } catch (err) {
     console.error("Failed to load notes", err);
   }
@@ -355,7 +376,147 @@ async function loadNotes() {
 
 function switchNotesTab(tab) {
   currentNotesTab = tab;
-  renderNotes();
+  renderAllNotes();
+}
+
+function updateStackedDropdown() {
+  const select = document.getElementById('notesViewSelect');
+  if (!select) return;
+  const available = getAvailableTabsForStacked();
+  select.innerHTML = '';
+  available.forEach(tab => {
+    const opt = document.createElement('option');
+    opt.value = tab;
+    opt.textContent = TAB_LABELS[tab];
+    if (tab === currentNotesTab) opt.selected = true;
+    select.appendChild(opt);
+  });
+  // If current tab was split out, switch to default
+  if (!available.includes(currentNotesTab)) {
+    currentNotesTab = getDefaultTab();
+    if (currentNotesTab) select.value = currentNotesTab;
+  }
+}
+
+function renderAllNotes() {
+  updateStackedDropdown();
+
+  // Hide/show main notes tile
+  const mainTile = document.querySelector('[gs-id="notes"]');
+  const available = getAvailableTabsForStacked();
+  if (mainTile) {
+    mainTile.style.display = available.length === 0 ? 'none' : '';
+  }
+
+  // Render stacked tile
+  if (available.length > 0 && currentNotesTab) {
+    renderNotesForContainer('notesList', currentNotesTab, false);
+  }
+
+  // Render each split tile
+  splitTiles.forEach(cat => {
+    renderNotesForContainer('notesList-' + cat, cat, true);
+  });
+
+  // Show/hide + button based on edit mode
+  updateAddTileButton();
+}
+
+function renderNotesForContainer(containerId, category, isSplitTile) {
+  const list = document.getElementById(containerId);
+  if (!list) return;
+  list.innerHTML = '';
+
+  let filteredNotes;
+  if (category === 'completed') {
+    filteredNotes = notesData.filter(n => n.is_completed);
+    if (completedFilter !== 'all') {
+      filteredNotes = filteredNotes.filter(n => completedFilter === 'global' ? n.is_global : !n.is_global);
+    }
+  } else if (category === 'global') {
+    filteredNotes = notesData.filter(n => !n.is_completed && n.is_global);
+  } else {
+    filteredNotes = notesData.filter(n => !n.is_completed && !n.is_global);
+  }
+
+  // Show filter bar + Delete All for completed
+  if (category === 'completed') {
+    const toolbar = document.createElement('div');
+    toolbar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;';
+    toolbar.innerHTML = `
+      <select onchange="completedFilter=this.value;renderAllNotes()" style="background:var(--bg-dark);border:1px solid var(--border-light);color:var(--text-main);padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;outline:none;">
+        <option value="all" ${completedFilter === 'all' ? 'selected' : ''}>All</option>
+        <option value="personal" ${completedFilter === 'personal' ? 'selected' : ''}>Personal</option>
+        <option value="global" ${completedFilter === 'global' ? 'selected' : ''}>Global</option>
+      </select>
+      <button onclick="deleteAllCompleted()" style="background:rgba(239,68,68,0.15);color:var(--color-expense);border:1px solid rgba(239,68,68,0.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;">🗑 Delete All</button>
+    `;
+    list.appendChild(toolbar);
+  }
+
+  if (filteredNotes.length === 0) {
+    const emptyMsg = document.createElement('p');
+    emptyMsg.style.cssText = 'padding:10px;color:var(--text-muted);text-align:center;font-style:italic;';
+    emptyMsg.textContent = 'No tasks found.';
+    list.appendChild(emptyMsg);
+    return;
+  }
+
+  filteredNotes.sort((a, b) => {
+    if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+    if (a.deadline) return -1;
+    if (b.deadline) return 1;
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
+
+  filteredNotes.forEach(note => {
+    const div = document.createElement('div');
+    div.className = 'note-item';
+    div.style.cursor = 'pointer';
+
+    const safeNoteData = encodeURIComponent(JSON.stringify(note));
+    div.onclick = function (e) {
+      if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'button' || e.target.closest('button')) return;
+      openViewTaskModal(JSON.parse(decodeURIComponent(safeNoteData)));
+    };
+
+    const isChecked = note.is_completed ? 'checked' : '';
+    const textStyle = note.is_completed ? 'text-decoration: line-through; opacity: 0.5;' : '';
+
+    let tagHtml = '';
+    if (note.is_global && note.assignee_name) {
+      const shortName = note.assignee_name.split('@')[0];
+      const dotColor = stringToColor(shortName);
+      tagHtml = `<span style="font-size:11px;font-weight:500;background:rgba(0,0,0,0.3);border:1px solid var(--border-light);padding:2px 8px;border-radius:12px;display:inline-flex;align-items:center;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:${dotColor};"></span>${shortName}</span>`;
+    }
+
+    let deadlineHtml = '';
+    if (note.deadline) {
+      const dl = new Date(note.deadline).toLocaleDateString();
+      deadlineHtml = `<span style="font-size:11px;color:var(--color-expense);margin-right:8px;">Due: ${dl}</span>`;
+    } else {
+      deadlineHtml = `<span style="font-size:11px;color:var(--text-muted);margin-right:8px;">Due: Anytime</span>`;
+    }
+
+    const deleteBtn = category === 'completed'
+      ? `<button onclick="deleteNote(${note.id}, ${note.is_global})" style="flex-shrink:0;background:none;border:none;color:var(--color-expense);cursor:pointer;font-size:14px;padding:4px;opacity:0.6;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Delete forever">🗑</button>`
+      : '';
+
+    div.innerHTML = `
+      <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+        <input type="radio" ${isChecked} onclick="toggleNoteCompletion(${note.id})">
+      </div>
+      <div style="flex:1;min-width:0;">
+        <p style="color:var(--text-main);font-size:14px;margin:0 0 4px 0;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;${textStyle}">${note.content}</p>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;">
+          ${deadlineHtml}
+          ${tagHtml}
+        </div>
+      </div>
+      ${deleteBtn}
+    `;
+    list.appendChild(div);
+  });
 }
 
 function openAddTaskModal() {
@@ -617,9 +778,122 @@ async function addNote() {
 // --- GridStack Layout Management ---
 let grid;
 
+function createSplitTileWidget(category) {
+  if (!grid) return;
+  const titles = { personal: 'Personal Tasks', global: 'Global Tasks', completed: 'Completed Archive' };
+  const gsId = 'notes-' + category;
+
+  // Don't double-create
+  if (document.querySelector(`[gs-id="${gsId}"]`)) return;
+
+  const addTaskBtn = category !== 'completed'
+    ? `<button class="btn-primary" onclick="openAddTaskModal()" style="width:100%;justify-content:center;padding:12px;font-size:15px;border-radius:12px;">Add Task</button>`
+    : '';
+
+  const deleteHandleHtml = `<button class="split-tile-delete-btn" onclick="removeSplitTile('${category}')" title="Remove this tile" style="display:none;position:absolute;top:8px;right:8px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:var(--color-expense);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;z-index:10;">✕</button>`;
+
+  const widgetHtml = `
+    <div class="grid-stack-item-content" style="position:relative;">
+      ${deleteHandleHtml}
+      <div class="card recent-card" style="height:100%;display:flex;flex-direction:column;">
+        <div class="card-header" style="border-bottom:1px solid var(--border-light);padding-bottom:15px;margin-bottom:15px;">
+          <h3 style="margin:0;">${titles[category]}</h3>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding-right:5px;margin-bottom:15px;" id="notesList-${category}"></div>
+        ${addTaskBtn}
+      </div>
+    </div>
+  `;
+
+  grid.addWidget({
+    id: gsId,
+    x: 0, y: 50, w: 4, h: 4, minW: 3, minH: 4,
+    content: widgetHtml
+  });
+
+  saveGrid();
+  renderAllNotes();
+
+  // Show delete buttons if currently editing
+  if (isEditingLayout) {
+    document.querySelectorAll('.split-tile-delete-btn').forEach(b => b.style.display = 'block');
+  }
+}
+
+function addSplitTile(category) {
+  if (splitTiles.includes(category)) return;
+  splitTiles.push(category);
+  saveSplitTiles();
+  createSplitTileWidget(category);
+  currentNotesTab = getDefaultTab();
+  renderAllNotes();
+}
+
+function removeSplitTile(category) {
+  splitTiles = splitTiles.filter(t => t !== category);
+  saveSplitTiles();
+
+  const gsId = 'notes-' + category;
+  const el = document.querySelector(`[gs-id="${gsId}"]`);
+  if (el && grid) {
+    grid.removeWidget(el);
+  }
+  saveGrid();
+  currentNotesTab = getDefaultTab();
+  renderAllNotes();
+}
+
+function showAddTileMenu() {
+  // Remove existing menu
+  const existing = document.getElementById('addTileMenu');
+  if (existing) { existing.remove(); return; }
+
+  const available = ['global', 'personal', 'completed'].filter(t => !splitTiles.includes(t));
+  if (available.length === 0) return;
+
+  const titles = { personal: 'Personal Tasks', global: 'Global Tasks', completed: 'Completed Archive' };
+  const menu = document.createElement('div');
+  menu.id = 'addTileMenu';
+  menu.style.cssText = 'position:absolute;top:40px;left:0;background:var(--bg-card);border:1px solid var(--border-light);border-radius:10px;padding:6px;z-index:100;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.3);';
+
+  available.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.textContent = titles[cat];
+    btn.style.cssText = 'display:block;width:100%;text-align:left;padding:8px 12px;background:none;border:none;color:var(--text-main);cursor:pointer;border-radius:6px;font-size:13px;transition:background 0.15s;';
+    btn.onmouseover = () => btn.style.background = 'rgba(255,255,255,0.06)';
+    btn.onmouseout = () => btn.style.background = 'none';
+    btn.onclick = () => { addSplitTile(cat); menu.remove(); };
+    menu.appendChild(btn);
+  });
+
+  const addBtn = document.getElementById('addNoteTileBtn');
+  if (addBtn) addBtn.parentElement.appendChild(menu);
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', function closeMenu(e) {
+      if (!menu.contains(e.target) && e.target.id !== 'addNoteTileBtn') {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    });
+  }, 10);
+}
+
+function updateAddTileButton() {
+  const btn = document.getElementById('addNoteTileBtn');
+  if (!btn) return;
+  btn.style.display = isEditingLayout ? 'flex' : 'none';
+
+  // Show/hide delete buttons on split tiles
+  document.querySelectorAll('.split-tile-delete-btn').forEach(b => {
+    b.style.display = isEditingLayout ? 'block' : 'none';
+  });
+}
+
 function initializeGrid() {
   grid = GridStack.init({
-    staticGrid: true, // locked by default
+    staticGrid: true,
     margin: 15,
     cellHeight: 100,
     animate: true
@@ -630,6 +904,17 @@ function initializeGrid() {
   if (savedLayout) {
     grid.load(JSON.parse(savedLayout), true);
   }
+
+  // Restore split tiles
+  splitTiles.forEach(cat => {
+    if (!document.querySelector(`[gs-id="notes-${cat}"]`)) {
+      createSplitTileWidget(cat);
+    }
+  });
+
+  // Set correct default tab
+  currentNotesTab = getDefaultTab() || 'global';
+  renderAllNotes();
 
   // Auto-save on any resize or drag
   grid.on('change', function (event, items) {
@@ -647,38 +932,41 @@ function saveGrid() {
 let isEditingLayout = false;
 function toggleEditLayout() {
   isEditingLayout = !isEditingLayout;
-  grid.setStatic(!isEditingLayout); // Unlock or lock grid
+  grid.setStatic(!isEditingLayout);
 
   const editBtn = document.getElementById('editLayoutBtn');
   const saveBtn = document.getElementById('saveLayoutBtn');
   const resetBtn = document.getElementById('resetLayoutBtn');
 
   if (isEditingLayout) {
-    // We are currently editing
     editBtn.style.display = 'none';
     saveBtn.style.display = 'inline-block';
     resetBtn.style.display = 'inline-block';
-
-    // Add visual indicator that grid is movable
     document.getElementById('main-grid').style.backgroundColor = 'rgba(255,255,255,0.02)';
     document.getElementById('main-grid').style.border = '1px dashed rgba(255,255,255,0.1)';
     document.getElementById('main-grid').style.borderRadius = '12px';
   } else {
-    // Finished editing
     editBtn.style.display = 'inline-block';
     saveBtn.style.display = 'none';
     resetBtn.style.display = 'none';
     document.getElementById('main-grid').style.backgroundColor = 'transparent';
     document.getElementById('main-grid').style.border = 'none';
+    // Close the add tile menu if open
+    const menu = document.getElementById('addTileMenu');
+    if (menu) menu.remove();
   }
+
+  updateAddTileButton();
 }
 
 function resetGrid() {
   if (confirm("Are you sure you want to reset the layout to factory defaults?")) {
     localStorage.removeItem("netigoGrid");
+    localStorage.removeItem("netigoSplitNotes");
     window.location.reload();
   }
 }
 
 // Boot GridStack
 document.addEventListener("DOMContentLoaded", initializeGrid);
+
