@@ -467,7 +467,7 @@ function renderNotes() {
     }
 
     div.innerHTML = `
-      <div style="padding-top: 2px; flex-shrink: 0; display: flex; align-items: center;">
+      <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
         <input type="radio" ${isChecked} onclick="toggleNoteCompletion(${note.id})">
       </div>
       <div style="flex: 1; min-width: 0;">
